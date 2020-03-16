@@ -28,7 +28,7 @@ pyAiTrainer is a high-level AI model handler that allows easy model handling and
 ### Description : ###
 Class that allows machine learning / neural network model handling with autotraining support.
 
-### Usage / Code sample : ###
+### Usage / Code sample (Custom Model): ###
 *This example create an [*AIModel*](https://github.com/FanaticPythoner/pyAiTrainer#aimodel-class) object with a given machine learning model from the [*scikit-learn*](https://pypi.org/project/scikit-learn/) library, then train it.*
 ```python
 # Get the dataset
@@ -60,7 +60,13 @@ model.train(max_iter=50, batchSize=10, dumpEachIter=25, verboseLevel=2)
 model.loadBestModel()
 ```
 
-### Usage / Code sample : ###
+When we run the previous code, we should get something like this:
+
+![alt text](https://i.imgur.com/yFGr0Uw.png)
+
+The image speaks for itself.
+
+### Usage / Code sample (Automatic Training): ###
 *This example create a [*AIModel*](https://github.com/FanaticPythoner/pyAiTrainer#aimodel-class) object with the auto trainer enabled, then train it on every model available in the default [*AutoTrainer*](https://github.com/FanaticPythoner/pyAiTrainer#autotrainer-class) class.*
 ```python
 # Get the dataset
@@ -89,7 +95,7 @@ When we run the previous code, we should get a warning similar to this one:
 
 ![alt text](https://i.imgur.com/p4lbi1o.png)
 
-#### This is totaly normal, as not all default custom-parameters-less models are compatible with this dataset input shape. #### 
+#### This is totally normal, as not all default custom-parameters-less models are compatible with this dataset input shape. #### 
 
 
 # AutoTrainer Class
@@ -97,7 +103,7 @@ When we run the previous code, we should get a warning similar to this one:
 ### Description : ###
 Class that contains all supported auto-training models
 
-### Usage / Code sample : ###
+### Usage / Code sample (Automatic Training With Custom Trainer): ###
 *This example create a custom [*AutoTrainer*](https://github.com/FanaticPythoner/pyAiTrainer#autotrainer-class) object, then feeds it to an [*AIModel*](https://github.com/FanaticPythoner/pyAiTrainer#aimodel-class) object, then train the [*AIModel*](https://github.com/FanaticPythoner/pyAiTrainer#aimodel-class).
 ```python
 # Get the dataset
