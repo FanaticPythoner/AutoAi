@@ -61,7 +61,7 @@ model.loadBestModel()
 ```
 
 ### Usage / Code sample : ###
-*This example create a [*AIModel*](https://github.com/FanaticPythoner/pyAiTrainer#aimodel-class) object with the auto trainer enabled, then train it on every model available in the default [*AutoTrainer*](https://github.com/FanaticPythoner/pyMagicBytes#autotrainer-class) class.*
+*This example create a [*AIModel*](https://github.com/FanaticPythoner/pyAiTrainer#aimodel-class) object with the auto trainer enabled, then train it on every model available in the default [*AutoTrainer*](https://github.com/FanaticPythoner/pyAiTrainer#autotrainer-class) class.*
 ```python
 # Get the dataset
 import pandas as pd
@@ -98,7 +98,7 @@ When we run the previous code, we should get a warning similar to this one:
 Class that contains all supported auto-training models
 
 ### Usage / Code sample : ###
-*This example create a custom [*AutoTrainer*](https://github.com/FanaticPythoner/pyMagicBytes#autotrainer-class) object, then feeds it to an [*AIModel*](https://github.com/FanaticPythoner/pyAiTrainer#aimodel-class) object, then train the [*AIModel*](https://github.com/FanaticPythoner/pyMagicBytes#aimodel-class).
+*This example create a custom [*AutoTrainer*](https://github.com/FanaticPythoner/pyAiTrainer#autotrainer-class) object, then feeds it to an [*AIModel*](https://github.com/FanaticPythoner/pyAiTrainer#aimodel-class) object, then train the [*AIModel*](https://github.com/FanaticPythoner/pyAiTrainer#aimodel-class).
 ```python
 # Get the dataset
 import pandas as pd
