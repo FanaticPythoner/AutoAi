@@ -1,5 +1,5 @@
 # pyAiTrainer
-pyAiTrainer is a high-level AI model handler that allows easy model handling and automatic training for a large amount of differents models.
+pyAiTrainer is a high-level AI model handler that allows easy manipulations and automatic training for a large amount of differents models.
 
 ### Language: ### 
 
