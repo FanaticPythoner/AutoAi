@@ -15,7 +15,7 @@ pyAiTrainer is a high-level AI model handler that allows easy model handling and
 
 - Classes
   - [*AIModel*](https://github.com/FanaticPythoner/pyAiTrainer#aimodel-class)
-  - [*AutoTrainer*](https://github.com/FanaticPythoner/pyAiTrainer#aimodel-class)
+  - [*AutoTrainer*](https://github.com/FanaticPythoner/pyAiTrainer#autotrainer-class)
   
 # Installation
 
