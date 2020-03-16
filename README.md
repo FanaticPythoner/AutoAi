@@ -104,7 +104,7 @@ When we run the previous code, we should get a warning similar to this one:
 Class that contains all supported auto-training models
 
 ### Usage / Code sample (Automatic Training With Custom Trainer): ###
-*This example create a custom [*AutoTrainer*](https://github.com/FanaticPythoner/pyAiTrainer#autotrainer-class) object, then feeds it to an [*AIModel*](https://github.com/FanaticPythoner/pyAiTrainer#aimodel-class) object, then train the [*AIModel*](https://github.com/FanaticPythoner/pyAiTrainer#aimodel-class).
+*This example create a custom [*AutoTrainer*](https://github.com/FanaticPythoner/pyAiTrainer#autotrainer-class) object, then feeds it to an [*AIModel*](https://github.com/FanaticPythoner/pyAiTrainer#aimodel-class) object, then train the [*AIModel*](https://github.com/FanaticPythoner/pyAiTrainer#aimodel-class). The second element in every tuple is a dictionary of parameters for the first tuple element, which is a machine learning / neural network model class.
 ```python
 # Get the dataset
 import pandas as pd
