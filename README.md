@@ -9,7 +9,7 @@ pyAiTrainer is a high-level AI model handler that allows easy model handling and
 
 - pyAiTrainer is not able to train multiple models in parallel, it does so sequentially.
 
-- For now, it only works with models from the Scikit-Learn python library. Keras models will soon be supported.
+- For now, it only works with models from the [*scikit-learn*](https://pypi.org/project/scikit-learn/) python library. [*Keras*](https://pypi.org/project/Keras/) models will soon be supported.
 
 ### Table of Contents: ###
 
