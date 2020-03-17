@@ -93,9 +93,7 @@ model.loadBestModel()
 
 When we run the previous code, we should get a warning similar to this one:
 
-![alt text](https://i.imgur.com/p4lbi1o.png)
-
-#### This is totally normal, as not all default custom-parameters-less models are compatible with this dataset input shape. #### 
+![alt text](https://i.imgur.com/kFHeOrB.png)
 
 
 # AutoTrainer Class
