@@ -18,7 +18,7 @@ class AutoTrainer():
     '''
         Class that contains all supported auto-training models
 
-        For documentation, refer to https://github.com/FanaticPythoner/pyAiTrainer
+        For documentation, refer to https://github.com/FanaticPythoner/AutoAi
     '''
     def getModelsTypes(self):
         '''
@@ -85,7 +85,7 @@ class AIModel():
         Class that allows machine learning / neural network model handling with
         autotraining support.
 
-        For documentation, refer to https://github.com/FanaticPythoner/pyAiTrainer
+        For documentation, refer to https://github.com/FanaticPythoner/AutoAi
     '''
     def __init__(self, modelName, baseDumpPath="Output_Models", autoTrainer=False, autoTrainerInstance=None):
         super().__init__()
