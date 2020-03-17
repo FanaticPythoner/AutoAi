@@ -5,7 +5,7 @@ x = df.iloc[:, 0:4]
 y = df.iloc[:, 4:]
 
 # Import AIModel
-from pyAiTrainer import AIModel
+from autoAi import AIModel
 
 # Create the AIModel with the auto trainer enabled
 model = AIModel("MyModel_AutoTraining", baseDumpPath="Output_Models", autoTrainer=True)
