@@ -9,7 +9,7 @@ from sklearn.ensemble import AdaBoostClassifier
 mlModel = AdaBoostClassifier()
 
 # Import AIModel
-from pyAiTrainer import AIModel
+from autoAi import AIModel
 
 # Create the AIModel
 model = AIModel("MyModel_CustomModel", baseDumpPath="Output_Models")
