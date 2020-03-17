@@ -91,7 +91,7 @@ model.train(max_iter=50, batchSize=10, dumpEachIter=25, verboseLevel=2)
 model.loadBestModel()
 ```
 
-When we run the previous code, we should get a warning similar to this one:
+When we run the previous code, we should get this line telling us that the auto trainer is activated:
 
 ![alt text](https://i.imgur.com/kFHeOrB.png)
 
