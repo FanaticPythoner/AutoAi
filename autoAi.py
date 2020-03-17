@@ -12,7 +12,8 @@ import re
 from colorama import init, Fore, Back, Style
 import sys
 import numpy as np
-
+import warnings
+from sklearn.exceptions import ConvergenceWarning
 class AutoTrainer():
     '''
         Class that contains all supported auto-training models
@@ -27,6 +28,8 @@ class AutoTrainer():
         '''
         import sklearn.ensemble
         import sklearn.linear_model
+        import sklearn.naive_bayes
+        import sklearn.svm
         return [
             (sklearn.ensemble.RandomForestClassifier, {}),
             (sklearn.ensemble.RandomForestRegressor, {}),
@@ -39,10 +42,26 @@ class AutoTrainer():
             (sklearn.ensemble.BaggingRegressor, {}),
             (sklearn.ensemble.ExtraTreesRegressor, {}),
             (sklearn.ensemble.IsolationForest, {}),
-            (sklearn.ensemble.StackingClassifier, {"estimators" : 150}),
-            (sklearn.ensemble.StackingRegressor, {"estimators" : 150}),
-            (sklearn.ensemble.VotingClassifier, {"estimators" : 150}),
-            (sklearn.ensemble.VotingRegressor, {"estimators" : 150}),
+            (sklearn.ensemble.StackingClassifier, {"estimators" : [
+                                                                      ('lr', sklearn.linear_model.LogisticRegression(multi_class='multinomial', dual=False, max_iter=1200000)),
+                                                                      ('rf', sklearn.ensemble.RandomForestClassifier(n_estimators=50)),
+                                                                      ('gnb', sklearn.naive_bayes.GaussianNB())
+                                                                  ],
+                                                  "final_estimator" : sklearn.ensemble.RandomForestClassifier(n_estimators=50)}),
+            (sklearn.ensemble.StackingRegressor, {"estimators" : [
+                                                                     ('lr', sklearn.linear_model.RidgeCV()),
+                                                                     ('rf', sklearn.svm.LinearSVR())
+                                                                 ],
+                                                  "final_estimator" : sklearn.ensemble.RandomForestRegressor(n_estimators=50)}),
+            (sklearn.ensemble.VotingClassifier, {"estimators" : [
+                                                                    ('lr', sklearn.linear_model.LogisticRegression(multi_class='multinomial', dual=False, max_iter=1200000)),
+                                                                    ('rf', sklearn.ensemble.RandomForestClassifier(n_estimators=50)),
+                                                                    ('gnb', sklearn.naive_bayes.GaussianNB())
+                                                                ]}),
+            (sklearn.ensemble.VotingRegressor, {"estimators" : [
+                                                                   ('lr', sklearn.linear_model.LinearRegression()),
+                                                                   ('rf', sklearn.ensemble.RandomForestRegressor(n_estimators=50))
+                                                               ]}),
 
             (sklearn.linear_model.LogisticRegression, {}),
             (sklearn.linear_model.LinearRegression, {}),
@@ -50,31 +69,12 @@ class AutoTrainer():
             (sklearn.linear_model.RidgeCV, {}),
             (sklearn.linear_model.ARDRegression, {}),
             (sklearn.linear_model.BayesianRidge, {}),
-            (sklearn.linear_model.ElasticNet, {}),
-            (sklearn.linear_model.ElasticNetCV, {}),
-            (sklearn.linear_model.Hinge, {}),
             (sklearn.linear_model.HuberRegressor, {}),
-            (sklearn.linear_model.Lars, {}),
-            (sklearn.linear_model.LarsCV, {}),
-            (sklearn.linear_model.Lasso, {}),
-            (sklearn.linear_model.LassoCV, {}),
-            (sklearn.linear_model.LassoLars, {}),
-            (sklearn.linear_model.LassoLarsCV, {}),
-            (sklearn.linear_model.LassoLarsIC, {}),
-            (sklearn.linear_model.LogisticRegressionCV, {}),
-            (sklearn.linear_model.ModifiedHuber, {}),
-            (sklearn.linear_model.MultiTaskElasticNet, {}),
-            (sklearn.linear_model.MultiTaskElasticNetCV, {}),
-            (sklearn.linear_model.MultiTaskLasso, {}),
-            (sklearn.linear_model.MultiTaskLassoCV, {}),
             (sklearn.linear_model.OrthogonalMatchingPursuit, {}),
-            (sklearn.linear_model.OrthogonalMatchingPursuitCV, {}),
             (sklearn.linear_model.PassiveAggressiveClassifier, {}),
             (sklearn.linear_model.PassiveAggressiveRegressor, {}),
             (sklearn.linear_model.Perceptron, {}),
-            (sklearn.linear_model.RANSACRegressor, {}),
             (sklearn.linear_model.RidgeClassifier, {}),
-            (sklearn.linear_model.RidgeClassifierCV, {}),
             (sklearn.linear_model.SGDClassifier, {}),
             (sklearn.linear_model.SGDRegressor, {}),
             (sklearn.linear_model.TheilSenRegressor, {})
@@ -202,18 +202,36 @@ class AIModel():
 
             RETURNS -> List : Compatible Transformed Models Instances
         '''
+        def uniqueIndices(list):
+            seen = set()
+            res = []
+            for i, n in enumerate(list):
+                if n not in seen:
+                    res.append(i)
+                    seen.add(n)
+            return res
+
         models = self.autoTrainerInstance.getModelsTypes()
         modelsLen = len(models)
         compModelsInstances = []
 
         oldModel = self.model
+        uniqueIndicesLst = uniqueIndices(self.y_train)
+        xTrainMinimal = self.x_train[uniqueIndicesLst]
+        yTrainMinimal = self.y_train[uniqueIndicesLst]
 
         for model, args in models:
+            tmpXTrain = xTrainMinimal
+            tmpYTrain = yTrainMinimal
+            if model.__name__ in ('StackingClassifier', 'StackingRegressor', 'VotingClassifier', 'VotingRegressor'):
+                tmpXTrain = self.x_train
+                tmpYTrain = self.y_train
+                
             instance = model(**args)
             try:
                 sys.stdout = open(os.devnull, "w")
                 sys.stderr = open(os.devnull, "w")
-                instance.fit(self.x_train[0:1], self.y_train[0:1])
+                instance.fit(tmpXTrain, tmpYTrain)
                 sys.stdout = sys.__stdout__
                 sys.stderr = sys.__stderr__
                 compModelsInstances.append(instance)
@@ -230,8 +248,8 @@ class AIModel():
 
             RETURNS -> Void
         '''
-        compModelsInstances = []
 
+        compModelsInstances = []
         if self.autoTrainer:
             compModelsInstances, incompCount, totalCount =  self.getCompatibleAutotrainerModels()
             compModelsInstances = [x for x in compModelsInstances if type(x) != type(self.model)]
@@ -266,8 +284,30 @@ class AIModel():
                 self.y_test is None or self.modelType is None):
                 raise Exception("Cannot train model: The current dataset is not defined.")
 
-            self.model.fit(self.x_train[0:batchSize], self.y_train[0:batchSize])
+            if self.model.__class__.__name__ in ('StackingClassifier', 'StackingRegressor', 'VotingClassifier', 'VotingRegressor'):
+                randomize = np.arange(len(self.x_train))
+                np.random.shuffle(randomize)
+                x_trainTemp = self.x_train[randomize]
+                y_trainTemp = self.y_train[randomize]
+            else:
+                x_trainTemp = self.x_train[0:batchSize]
+                y_trainTemp = self.y_train[0:batchSize]
+                
+            seenOneConvergenceWarning = False
 
+            if not seenOneConvergenceWarning:
+                warnings.filterwarnings("error", category=ConvergenceWarning)
+            else:
+                warnings.filterwarnings("ignore", category=ConvergenceWarning)
+
+            try:
+                self.model.fit(x_trainTemp, y_trainTemp)
+            except ConvergenceWarning as e:
+                if not seenOneConvergenceWarning:
+                    print(Fore.RED, e, Fore.RESET)
+                    seenOneConvergenceWarning = True
+                else:
+                    pass
 
             batchSizeModifier = 0
             batchSizeEndModifier = 0
@@ -289,9 +329,28 @@ class AIModel():
                 self.y_train = self.y_train[randomize]
 
                 while i < xTrainLen:
-                    x_trainTemp = self.x_train[i - batchSize + batchSizeModifier: i + batchSizeEndModifier]
-                    y_trainTemp = self.y_train[i - batchSize + batchSizeModifier: i + batchSizeEndModifier]
-                    self.model.fit(x_trainTemp, y_trainTemp)
+                    if self.model.__class__.__name__ in ('StackingClassifier', 'StackingRegressor', 'VotingClassifier', 'VotingRegressor'):
+                        randomize = np.arange(len(self.x_train))
+                        np.random.shuffle(randomize)
+                        x_trainTemp = self.x_train[randomize]
+                        y_trainTemp = self.y_train[randomize]
+                    else:
+                        x_trainTemp = self.x_train[i - batchSize + batchSizeModifier: i + batchSizeEndModifier]
+                        y_trainTemp = self.y_train[i - batchSize + batchSizeModifier: i + batchSizeEndModifier]
+
+                    if not seenOneConvergenceWarning:
+                        warnings.filterwarnings("error", category=ConvergenceWarning)
+                    else:
+                        warnings.filterwarnings("ignore", category=ConvergenceWarning)
+
+                    try:
+                        self.model.fit(x_trainTemp, y_trainTemp)
+                    except ConvergenceWarning as e:
+                        if not seenOneConvergenceWarning:
+                            print(Fore.RED, e, Fore.RESET)
+                            seenOneConvergenceWarning = True
+                        else:
+                            pass
                     
                     if iIter % dumpEachIter == 0:
                         if verboseLevel in (1, 2):
