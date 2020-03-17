@@ -1,5 +1,5 @@
-# pyAiTrainer
-pyAiTrainer is a high-level AI model handler that allows easy manipulations and automatic training for a large amount of differents models.
+# AutoAi
+AutoAi is a high-level AI model handler that allows easy manipulations and automatic training for a large amount of differents models.
 
 ### Language: ### 
 
@@ -7,15 +7,15 @@ pyAiTrainer is a high-level AI model handler that allows easy manipulations and 
 
 ### Limitations: ###
 
-- pyAiTrainer is not able to train multiple models in parallel, it does so sequentially.
+- AutoAi is not able to train multiple models in parallel, it does so sequentially.
 
 - For now, it only works with models from the [*scikit-learn*](https://pypi.org/project/scikit-learn/) python library. [*Keras*](https://pypi.org/project/Keras/) models will soon be supported.
 
 ### Table of Contents: ###
 
 - Classes
-  - [*AIModel*](https://github.com/FanaticPythoner/pyAiTrainer#aimodel-class)
-  - [*AutoTrainer*](https://github.com/FanaticPythoner/pyAiTrainer#autotrainer-class)
+  - [*AIModel*](https://github.com/FanaticPythoner/AutoAi#aimodel-class)
+  - [*AutoTrainer*](https://github.com/FanaticPythoner/AutoAi#autotrainer-class)
   
 # Installation
 
@@ -29,7 +29,7 @@ pyAiTrainer is a high-level AI model handler that allows easy manipulations and 
 Class that allows machine learning / neural network model handling with autotraining support.
 
 ### Usage / Code sample (Custom Model): ###
-*This example create an [*AIModel*](https://github.com/FanaticPythoner/pyAiTrainer#aimodel-class) object with a given machine learning model from the [*scikit-learn*](https://pypi.org/project/scikit-learn/) library, then train it.*
+*This example create an [*AIModel*](https://github.com/FanaticPythoner/AutoAi#aimodel-class) object with a given machine learning model from the [*scikit-learn*](https://pypi.org/project/scikit-learn/) library, then train it.*
 ```python
 # Get the dataset
 import pandas as pd
@@ -42,7 +42,7 @@ from sklearn.ensemble import AdaBoostClassifier
 mlModel = AdaBoostClassifier()
 
 # Import AIModel
-from pyAiTrainer import AIModel
+from autoAi import AIModel
 
 # Create the AIModel
 model = AIModel("MyModel_CustomModel", baseDumpPath="Output_Models")
@@ -67,7 +67,7 @@ When we run the previous code, we should get something like this:
 The image speaks for itself.
 
 ### Usage / Code sample (Automatic Training): ###
-*This example create a [*AIModel*](https://github.com/FanaticPythoner/pyAiTrainer#aimodel-class) object with the auto trainer enabled, then train it on every model available in the default [*AutoTrainer*](https://github.com/FanaticPythoner/pyAiTrainer#autotrainer-class) class.*
+*This example create a [*AIModel*](https://github.com/FanaticPythoner/AutoAi#aimodel-class) object with the auto trainer enabled, then train it on every model available in the default [*AutoTrainer*](https://github.com/FanaticPythoner/AutoAi#autotrainer-class) class.*
 ```python
 # Get the dataset
 import pandas as pd
@@ -76,7 +76,7 @@ x = df.iloc[:, 0:4]
 y = df.iloc[:, 4:]
 
 # Import AIModel
-from pyAiTrainer import AIModel
+from autoAi import AIModel
 
 # Create the AIModel with the auto trainer enabled
 model = AIModel("MyModel_AutoTraining", baseDumpPath="Output_Models", autoTrainer=True)
@@ -102,7 +102,7 @@ When we run the previous code, we should get this line telling us that the auto 
 Class that contains all supported auto-training models
 
 ### Usage / Code sample (Automatic Training With Custom Trainer): ###
-*This example create a custom [*AutoTrainer*](https://github.com/FanaticPythoner/pyAiTrainer#autotrainer-class) object, then feeds it to an [*AIModel*](https://github.com/FanaticPythoner/pyAiTrainer#aimodel-class) object, then train the [*AIModel*](https://github.com/FanaticPythoner/pyAiTrainer#aimodel-class). In the method *getModelsTypes* in the [*AutoTrainer*](https://github.com/FanaticPythoner/pyAiTrainer#autotrainer-class) class, the second element in every tuple is a dictionary of parameters for the first tuple element, which is a machine learning / neural network model class.
+*This example create a custom [*AutoTrainer*](https://github.com/FanaticPythoner/AutoAi#autotrainer-class) object, then feeds it to an [*AIModel*](https://github.com/FanaticPythoner/AutoAi#aimodel-class) object, then train the [*AIModel*](https://github.com/FanaticPythoner/AutoAi#aimodel-class). In the method *getModelsTypes* in the [*AutoTrainer*](https://github.com/FanaticPythoner/AutoAi#autotrainer-class) class, the second element in every tuple is a dictionary of parameters for the first tuple element, which is a machine learning / neural network model class.
 ```python
 # Get the dataset
 import pandas as pd
@@ -123,7 +123,7 @@ class AutoTrainer():
         ]
 
 # Import AIModel
-from pyAiTrainer import AIModel
+from autoAi import AIModel
 
 # Create the AIModel
 model = AIModel("MyModel_CustomTrainer", baseDumpPath="Output_Models", autoTrainer=True, autoTrainerInstance=AutoTrainer())
