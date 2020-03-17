@@ -17,7 +17,7 @@ class AutoTrainer():
         ]
 
 # Import AIModel
-from pyAiTrainer import AIModel
+from autoAi import AIModel
 
 # Create the AIModel
 model = AIModel("MyModel_CustomTrainer", baseDumpPath="Output_Models", autoTrainer=True, autoTrainerInstance=AutoTrainer())
