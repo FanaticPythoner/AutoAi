@@ -14,6 +14,8 @@ import sys
 import numpy as np
 import warnings
 from sklearn.exceptions import ConvergenceWarning
+
+
 class AutoTrainer():
     '''
         Class that contains all supported auto-training models
@@ -265,6 +267,7 @@ class AIModel():
         else:
             compModelsInstances = [self.model]
 
+        iIter = 0
         for instance in compModelsInstances:
             self.updateModel(instance)
 
