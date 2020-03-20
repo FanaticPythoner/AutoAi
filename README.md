@@ -145,7 +145,7 @@ model.loadBestModel()
 Class that allows automatic data preprocessing
 
 ### Usage / Code sample (AutoPreprocessor Predict NaN with AiModel and AutoTrainer): ###
-*This example uses the [*AIModel*](https://github.com/FanaticPythoner/AutoAi#aimodel-class) and create a model for each column in the dataset that has NaN values to predict those values. The [*AutoTrainer*](https://github.com/FanaticPythoner/AutoAi#autotrainer-class) can either be specified or not, if not like in this case, the default [*AutoTrainer*](https://github.com/FanaticPythoner/AutoAi#autotrainer-class) class is used.
+*This example uses the [*AIModel*](https://github.com/FanaticPythoner/AutoAi#aimodel-class) and create a model for each column in the dataset that has NaN values to predict those values. The [*AutoTrainer*](https://github.com/FanaticPythoner/AutoAi#autotrainer-class) can either be specified or not, if not like in this case, the default [*AutoTrainer*](https://github.com/FanaticPythoner/AutoAi#autotrainer-class) class is used.*
 ```python
 from autoAi import AutoPreprocessor
 
@@ -176,7 +176,7 @@ print(obj.getFullDataset())
 ```
 
 ### Usage / Code sample (AutoPreprocessor Predict NaN with AiModel and custom AutoTrainer): ###
-*This example uses the [*AIModel*](https://github.com/FanaticPythoner/AutoAi#aimodel-class) and create a model for each column in the dataset that has NaN values to predict those values. The [*AutoTrainer*](https://github.com/FanaticPythoner/AutoAi#autotrainer-class) is created and passed as a parameter to the [*AutoPreprocessor*](https://github.com/FanaticPythoner/AutoAi#autopreprocessor-class) instance.
+*This example uses the [*AIModel*](https://github.com/FanaticPythoner/AutoAi#aimodel-class) and create a model for each column in the dataset that has NaN values to predict those values. The [*AutoTrainer*](https://github.com/FanaticPythoner/AutoAi#autotrainer-class) is created and passed as a parameter to the [*AutoPreprocessor*](https://github.com/FanaticPythoner/AutoAi#autopreprocessor-class) instance.*
 ```python
 from autoAi import AutoPreprocessor
 
