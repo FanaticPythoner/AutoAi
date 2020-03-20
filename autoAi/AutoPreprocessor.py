@@ -685,7 +685,7 @@ class AutoPreprocessor():
             sha.update('_'.join([x for x in modelDatasetTemp.columns if x != colName]).encode())
             modelProjectName = colName + "_" + sha.hexdigest()[:8]
 
-            model = AIModel(modelProjectName, baseDumpPath="NanPrecitModels", 
+            model = AIModel(modelProjectName, baseDumpPath="NanPredictModels", 
                             autoTrainer=True, autoTrainerInstance=self.predictAutoTrainer)
             modelXTemp = modelDatasetTemp.iloc[:, [x for x in self.allIndices if x != iCol]]
             modelYTemp = modelDatasetTemp.iloc[:, [iCol]]
