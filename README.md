@@ -108,9 +108,10 @@ Class that contains all supported auto-training models
 ```python
 # Get the dataset
 import pandas as pd
-df = pd.read_csv("Test_Dataset\\iris2.csv")
+df = pd.read_csv("Test_Dataset\\iris_preprocessed_predict_all.csv")
 x = df.iloc[:, 0:4]
 y = df.iloc[:, 4:]
+
 
 # Creating the custom AutoTrainer class.
 class AutoTrainer():
@@ -118,14 +119,13 @@ class AutoTrainer():
         import sklearn.ensemble
         import sklearn.linear_model
         return [
-            (sklearn.ensemble.RandomForestClassifier, { "n_estimators": 100,
-                                                        "random_state": 42 }),
-            (sklearn.ensemble.RandomForestRegressor, {}),
-            (sklearn.linear_model.LinearRegression, {}),
+            sklearn.ensemble.RandomForestClassifier(n_estimators=100, random_state=42),
+            sklearn.ensemble.RandomForestRegressor(),
+            sklearn.linear_model.LinearRegression()
         ]
 
 # Import AIModel
-from autoAi import AIModel
+from autoAi.AIModel import AIModel
 
 # Create the AIModel
 model = AIModel("MyModel_CustomTrainer", baseDumpPath="Output_Models", autoTrainer=True, autoTrainerInstance=AutoTrainer())
@@ -148,28 +148,28 @@ Class that allows automatic data preprocessing
 ### Usage / Code sample (AutoPreprocessor Predict NaN with AiModel and AutoTrainer): ###
 *This example uses the [*AIModel*](https://github.com/FanaticPythoner/AutoAi#aimodel-class) and create a model for each column in the dataset that has NaN values to predict those values. The [*AutoTrainer*](https://github.com/FanaticPythoner/AutoAi#autotrainer-class) can either be specified or not, if not like in this case, the default [*AutoTrainer*](https://github.com/FanaticPythoner/AutoAi#autotrainer-class) class is used.*
 ```python
-from autoAi import AutoPreprocessor
+from autoAi.AutoPreprocessor import AutoPreprocessor
 
 # Create the AutoPreprocessor object
 obj = AutoPreprocessor(datasetPath='Test_Dataset\\iris.csv', 
                        datasetType='csv', yDataIndices=[4])
 
 # Specify the dataset ordinal indices
-obj.updateOrdinalIndices(ordinalIndices=[4])
+obj.updateCategoricalIndices(categoricalIndices=[4])
 
 # Specify the current data scale type
-obj.updateScaleData(scaleDataType=['standard'])
+obj.updateScaleData(scaleDataType=['minmax'])
 
 # Specify the dataset data handling method. In this case 'predict', which 
 # will use the autoAi.AiModel to build models that will predict the NaNs values
 obj.updateNaNHandlingMethod(nanDataHandling='predict', predictMaxIter=50, predictBatchSize=10,
-                            predictDumpEachIter=25)
+                            predictDumpEachIter=25, predictVerboseLevel=2)
 
 # Execute the preprocessing with the current settings
 obj.execute()
 
 # Export the preprocessed dataset
-obj.export(filePath="Test_Dataset\\iris_preprocessed.csv", 
+obj.export(filePath="Test_Dataset\\iris_preprocessed_predict_all.csv", 
            fileType='csv')
 
 # Print the preprocessed data
@@ -179,15 +179,15 @@ print(obj.getFullDataset())
 ### Usage / Code sample (AutoPreprocessor Predict NaN with AiModel and custom AutoTrainer): ###
 *This example uses the [*AIModel*](https://github.com/FanaticPythoner/AutoAi#aimodel-class) and create a model for each column in the dataset that has NaN values to predict those values. The [*AutoTrainer*](https://github.com/FanaticPythoner/AutoAi#autotrainer-class) is created and passed as a parameter to the [*AutoPreprocessor*](https://github.com/FanaticPythoner/AutoAi#autopreprocessor-class) instance.*
 ```python
-from autoAi import AutoPreprocessor
+from autoAi.AutoPreprocessor import AutoPreprocessor
 
 # Creating the custom AutoTrainer class
 class CustomAutoTrainer():
     def getModelsTypes(self):
         import sklearn.ensemble
         return [
-            (sklearn.ensemble.VotingRegressor, {"estimators" : [('lr', sklearn.linear_model.LinearRegression()),
-                                                                ('rf', sklearn.ensemble.RandomForestRegressor(n_estimators=150))]})
+            sklearn.ensemble.VotingRegressor(estimators=[('lr', sklearn.linear_model.LinearRegression()),
+                                                         ('rf', sklearn.ensemble.RandomForestRegressor(n_estimators=50))])
         ]
 
 # Create the AutoPreprocessor object
@@ -195,24 +195,83 @@ obj = AutoPreprocessor(datasetPath='Test_Dataset\\iris.csv',
                        datasetType='csv', yDataIndices=[4])
 
 # Specify the dataset ordinal indices
-obj.updateOrdinalIndices(ordinalIndices=[4])
+obj.updateCategoricalIndices(categoricalIndices=[4])
 
 # Specify the current data scale type
-obj.updateScaleData(scaleDataType=['standard'])
+obj.updateScaleData(scaleDataType=['minmax'])
 
 # Specify the dataset data handling method. In this case 'predict', which 
 # will use the autoAi.AiModel to build models that will predict the NaNs values
 obj.updateNaNHandlingMethod(nanDataHandling='predict', predictAutoTrainer=CustomAutoTrainer(), 
                             predictMaxIter=50, predictBatchSize=10, predictDumpEachIter=25, 
-                            predictVerboseLevel=1)
+                            predictVerboseLevel=2)
 
 # Execute the preprocessing with the current settings
 obj.execute()
 
 # Export the preprocessed dataset
-obj.export(filePath="Test_Dataset\\iris_preprocessed.csv", 
+obj.export(filePath="Test_Dataset\\iris_preprocessed_predict_custom.csv", 
            fileType='csv')
 
 # Print the preprocessed data
 print(obj.getFullDataset())
+```
+
+# ICustomWrapper Interface
+
+### Description : ###
+Interface for custom neural network implementation
+
+### Usage / Code sample (Custom Neural Network Implementation): ###
+*This example create an [*AIModel*](https://github.com/FanaticPythoner/AutoAi#aimodel-class) object with a given custom neural nework model from the [*keras*](https://pypi.org/project/Keras/) library using the [*ICustomWrapper*](https://github.com/FanaticPythoner/AutoAi#icustomwrapper-interface) interface, then train it.*
+```python
+# Get the dataset
+import pandas as pd
+df = pd.read_csv("Test_Dataset\\iris_preprocessed_predict_all.csv")
+x = df.iloc[:, 0:4]
+y = df.iloc[:, 4:]
+
+# Import the ICustomWrapper interface
+from autoAi.Interfaces import ICustomWrapper
+
+# Import the Keras libraries
+from keras.layers import Dense
+from keras.models import Sequential
+
+# Create the Wrapper using the ICustomWrapper interface
+class CustomKerasWrapper(ICustomWrapper):
+    def __init__(self):
+        self.model = Sequential()
+        self.model.add(Dense(7, input_dim=4, activation='relu'))
+        self.model.add(Dense(7, activation='relu'))
+        self.model.add(Dense(2, activation='sigmoid'))
+
+        self.model.compile(loss='categorical_crossentropy', 
+                      optimizer='adam', 
+                      metrics=['mean_squared_error'])
+
+    def fit(self, X, y):
+        self.model.fit(X, y, verbose=0)
+
+    def predict(self, X):
+        return self.model.predict(X)
+
+
+# Import AIModel
+from autoAi.AIModel import AIModel
+
+# Create the AIModel
+model = AIModel("MyModel_CustomModelKeras", baseDumpPath="Output_Models")
+
+# Update the AIModel model with a CustomKerasWrapper
+model.updateModel(CustomKerasWrapper())
+
+# Update the AIModel dataset
+model.updateDataSet(x, y, test_size=0.2)
+
+# Train the AIModel
+model.train(max_iter=1000, batchSize=10, dumpEachIter=500, verboseLevel=2)
+
+# Load the best model from all trained models located in "Output_Models/MyModel_CustomModelKeras"
+model.loadBestModel()
 ```
