@@ -1,6 +1,16 @@
 # AutoAi
 AutoAi is a high-level AI automation library that allows things like automatic training for a large amount of differents models and automatic data preprocessing. Support custom class implementation, making it work on any neural network you can imagine.
 
+## Update: ##
+
+- Added support for custom neural network implementation with the [*ICustomWrapper*](https://github.com/FanaticPythoner/AutoAi#icustomwrapper-interface) interface
+- Added a dynamic Keras model in the AutoTrainer default class
+- Added the [*AutoPreprocessor*](https://github.com/FanaticPythoner/AutoAi#autopreprocessor-class) Plot function
+- Added support for clearing unwanted models after training in the [*AIModel*](https://github.com/FanaticPythoner/AutoAi#aimodel-class) class
+- Added multiple examples
+- Changed the [*AutoTrainer*](https://github.com/FanaticPythoner/AutoAi#autotrainer-class) list implementation for easier understanding
+- Minor bug fixes
+
 ### Language: ### 
 
 - Tested in Python 3.7.5, should work in all Python 3.7+ versions.
