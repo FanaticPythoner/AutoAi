@@ -58,5 +58,5 @@ model.updateDataSet(x, y, test_size=0.2)
 # Train the AIModel
 model.train(max_iter=1000, batchSize=10, dumpEachIter=500, verboseLevel=2)
 
-# Load the best model from all trained models located in "Output_Models/MyModel_CustomModel"
+# Load the best model from all trained models located in "Output_Models/MyModel_CustomModelKeras"
 model.loadBestModel()
