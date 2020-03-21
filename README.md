@@ -1,5 +1,5 @@
 # AutoAi
-AutoAi is a high-level AI automation library that allows things like automatic training for a large amount of differents models and automatic data preprocessing.
+AutoAi is a high-level AI automation library that allows things like automatic training for a large amount of differents models and automatic data preprocessing. Support custom class implementation, making it work on any neural network you can imagine.
 
 ### Language: ### 
 
@@ -9,14 +9,15 @@ AutoAi is a high-level AI automation library that allows things like automatic t
 
 - AutoAi is not able to train multiple models in parallel, it does so sequentially.
 
-- For now, it only works with models from the [*scikit-learn*](https://pypi.org/project/scikit-learn/) python library. [*Keras*](https://pypi.org/project/Keras/) models will soon be supported.
-
 ### Table of Contents: ###
 
 - Classes
   - [*AIModel*](https://github.com/FanaticPythoner/AutoAi#aimodel-class)
   - [*AutoTrainer*](https://github.com/FanaticPythoner/AutoAi#autotrainer-class)
   - [*AutoPreprocessor*](https://github.com/FanaticPythoner/AutoAi#autopreprocessor-class)
+  
+- Interfaces
+  - [*ICustomWrapper*](https://github.com/FanaticPythoner/AutoAi#icustomwrapper-interface)
   
 # Installation
 
@@ -27,23 +28,23 @@ AutoAi is a high-level AI automation library that allows things like automatic t
 # AIModel Class
 
 ### Description : ###
-Class that allows machine learning / neural network model handling with autotraining support.
+Class that allows neural network / machine handling model handling with autotraining support.
 
 ### Usage / Code sample (Custom Model): ###
 *This example create an [*AIModel*](https://github.com/FanaticPythoner/AutoAi#aimodel-class) object with a given machine learning model from the [*scikit-learn*](https://pypi.org/project/scikit-learn/) library, then train it.*
 ```python
 # Get the dataset
 import pandas as pd
-df = pd.read_csv("Test_Dataset\\iris2.csv")
+df = pd.read_csv("Test_Dataset\\iris_preprocessed_predict_all.csv")
 x = df.iloc[:, 0:4]
 y = df.iloc[:, 4:]
 
 # Create a machine learning model
-from sklearn.ensemble import AdaBoostClassifier
-mlModel = AdaBoostClassifier()
+from sklearn.ensemble import RandomForestClassifier
+mlModel = RandomForestClassifier()
 
 # Import AIModel
-from autoAi import AIModel
+from autoAi.AIModel import AIModel
 
 # Create the AIModel
 model = AIModel("MyModel_CustomModel", baseDumpPath="Output_Models")
@@ -63,7 +64,7 @@ model.loadBestModel()
 
 When we run the previous code, we should get something like this:
 
-![alt text](https://i.imgur.com/yFGr0Uw.png)
+![alt text](https://i.imgur.com/TH7qxTd.png)
 
 The image speaks for itself.
 
@@ -72,12 +73,12 @@ The image speaks for itself.
 ```python
 # Get the dataset
 import pandas as pd
-df = pd.read_csv("Test_Dataset\\iris2.csv")
+df = pd.read_csv("Test_Dataset\\iris_preprocessed_predict_all.csv")
 x = df.iloc[:, 0:4]
 y = df.iloc[:, 4:]
 
 # Import AIModel
-from autoAi import AIModel
+from autoAi.AIModel import AIModel
 
 # Create the AIModel with the auto trainer enabled
 model = AIModel("MyModel_AutoTraining", baseDumpPath="Output_Models", autoTrainer=True)
