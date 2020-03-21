@@ -14,7 +14,9 @@ import sys
 import numpy as np
 import warnings
 from sklearn.exceptions import ConvergenceWarning
+from sklearn.exceptions import DataConversionWarning
 import shutil
+import platform
 
 from autoAi.AutoTrainer import AutoTrainer
 
@@ -27,14 +29,15 @@ class AIModel():
 
         Parameters:
 
-            1. modelName           : Name of the AiModel project
-            2. baseDumpPath        : Base path to dump the models during training
-            3. autoTrainer         : Use the automatic trainer or not
-            4. autoTrainerInstance : Instance of custom auto trainer class if specified, otherwise use the default
-                                     AutoTrainer.
+            1. modelName            : Name of the AiModel project
+            2. baseDumpPath         : Base path to dump the models during training
+            3. autoTrainer          : Use the automatic trainer or not
+            4. autoTrainerInstance  : Instance of custom auto trainer class if specified, otherwise use the default
+                                      AutoTrainer.
     '''
     def __init__(self, modelName, baseDumpPath="Output_Models", autoTrainer=False, autoTrainerInstance=None):
         super().__init__()
+        init(autoreset=True, convert=True)
         self._validFilenameChars = "-_.() %s%s" % (string.ascii_letters, string.digits)
         self.x = None
         self.y = None
@@ -130,7 +133,7 @@ class AIModel():
 
         self.x = x
         self.y = y
-        self.x_train, self.x_test, self.y_train, self.y_test = train_test_split(self.x.values, self.y.values.ravel(), test_size = test_size)
+        self.x_train, self.x_test, self.y_train, self.y_test = train_test_split(self.x.values, self.y.values, test_size = test_size)
 
 
     def _clearWorseModels(self):
@@ -145,6 +148,11 @@ class AIModel():
             file_path = os.path.join(self.baseDumpPath, filename)
             if os.path.isfile(file_path) or os.path.islink(file_path):
                 accuracy = float('.'.join(filename.split(".")[:-1]).split("_")[-1])
+                if '.'.join(filename.split(".")[:-1]).split("_")[1] == "Regressor":
+                    if accuracy <= 1 and accuracy >= 0:
+                        accuracy = 1 - accuracy
+                    else:
+                        accuracy = 1 - (accuracy - (int(accuracy)))
                 if accuracy > highest:
                     highest = accuracy
                     fileNameExclude = filename
@@ -171,9 +179,14 @@ class AIModel():
             accuracyScore = metrics.accuracy_score(self.y_test, y_pred)
             self.isClassifier = True
         except ValueError as e:
-            n = y_pred.shape[0]
-            p = self.x_test.shape[1]
-            accuracyScore = 1-(1-metrics.r2_score(self.y_test, y_pred))*(n-1)/(n-p-1)
+            try:
+                accuracyScore = metrics.mean_squared_error(self.y_test, y_pred)
+            except ValueError as e2:
+                accuracyScore = 1
+            # n = y_pred.shape[0]
+            # p = self.x_test.shape[1]
+            # accuracyScore = 1-(1-metrics.r2_score(self.y_test, y_pred))*(n-1)/(n-p-1)
+            # accuracyScore = metrics.mean_squared_error(self.y_test, y_pred)
             self.isClassifier = False
         return accuracyScore
 
@@ -184,14 +197,30 @@ class AIModel():
 
             RETURNS -> Void
         '''
-        init(convert=True)
+        
         toPrintString = "\n[" + Fore.BLUE + 'ITER' + Fore.RESET + "] " + str(iterNum) + " iterations. Type \"" + self.modelType + "\"."
         accuracyScore = self.getAccuracy()
         if self.isClassifier:
-            toPrintString += " Accuracy: " + Style.BRIGHT + Fore.BLUE + str(accuracyScore) + Fore.RESET + Style.NORMAL
+            toPrintString += " Accuracy: " + Fore.BLUE + str(accuracyScore) + Fore.RESET
         else:
-            toPrintString += " Adjusted R2: " + Style.BRIGHT + Fore.BLUE + str(accuracyScore) + Fore.RESET + Style.NORMAL
+            toPrintString += " Mean Squared Error: " + Fore.BLUE + str(accuracyScore) + Fore.RESET
         print(toPrintString)
+
+
+    def _getUniqueIndices(self, lst):
+        '''
+            Get the unique indices of a given list
+
+            RETURNS -> List[int] : indices
+        '''
+        lst = np.array(lst).flatten()
+        seen = set()
+        res = []
+        for i, n in enumerate(lst):
+            if n not in seen:
+                res.append(i)
+                seen.add(n)
+        return res
 
 
     def getCompatibleAutotrainerModels(self):
@@ -200,46 +229,40 @@ class AIModel():
 
             RETURNS -> List : Compatible Transformed Models Instances
         '''
-        def uniqueIndices(list):
-            seen = set()
-            res = []
-            for i, n in enumerate(list):
-                if n not in seen:
-                    res.append(i)
-                    seen.add(n)
-            return res
 
         models = self.autoTrainerInstance.getModelsTypes()
         modelsLen = len(models)
         compModelsInstances = []
 
-        uniqueIndicesLst = uniqueIndices(self.y_train)
+        uniqueIndicesLst = self._getUniqueIndices(self.y_train)
         xTrainMinimal = self.x_train[uniqueIndicesLst]
         yTrainMinimal = self.y_train[uniqueIndicesLst]
 
-        for model, args in models:
+        sys.stdout = open(os.devnull, "w")
+        sys.stderr = open(os.devnull, "w")
+
+        for instance in models:
             tmpXTrain = xTrainMinimal
             tmpYTrain = yTrainMinimal
-            if model.__name__ in ('StackingClassifier', 'StackingRegressor', 'VotingClassifier', 'VotingRegressor'):
+            if instance.__class__.__name__ in ('StackingClassifier', 'StackingRegressor', 'VotingClassifier', 'VotingRegressor'):
                 tmpXTrain = self.x_train
                 tmpYTrain = self.y_train
-                
-            instance = model(**args)
+
             try:
-                sys.stdout = open(os.devnull, "w")
-                sys.stderr = open(os.devnull, "w")
+                if instance.__class__.__name__ in ('DynamicKerasWrapper') and not instance.isSet:
+                    instance.preFit(self.x_train, self.y_train)
                 instance.fit(tmpXTrain, tmpYTrain)
-                sys.stdout = sys.__stdout__
-                sys.stderr = sys.__stderr__
                 compModelsInstances.append(instance)
             except Exception as e:
                 pass
 
+        sys.stdout = sys.__stdout__
+        sys.stderr = sys.__stderr__
         incompModelsCount = modelsLen - len(compModelsInstances)
         return (compModelsInstances, incompModelsCount, modelsLen)
 
 
-    def train(self, max_iter=100, batchSize=100, dumpEachIter=50, verboseLevel=1, keepBestModelOnly=False):
+    def train(self, max_iter=100, batchSize=1, dumpEachIter=50, verboseLevel=1, keepBestModelOnly=False):
         '''
             Train the current model with dataset
 
@@ -253,6 +276,7 @@ class AIModel():
 
             RETURNS -> Void
         '''
+        init(convert=True)
         self._validateKeepBestModelOnly(keepBestModelOnly)
 
         compModelsInstances = []
@@ -277,7 +301,7 @@ class AIModel():
             self.updateModel(instance)
 
             if verboseLevel == 2:
-                init(convert=True)
+                
                 if self.autoTrainer:
                     print("\n[" + Fore.MAGENTA + 'AUTOTRAINER' + Fore.RESET + "] Loaded model type \"" + Fore.MAGENTA + instance.__class__.__name__ + Fore.RESET + "\".")
                 else:
@@ -303,12 +327,16 @@ class AIModel():
                 
             seenOneConvergenceWarning = False
 
+            warnings.filterwarnings("error", category=DataConversionWarning)
+
             if not seenOneConvergenceWarning:
                 warnings.filterwarnings("error", category=ConvergenceWarning)
             else:
                 warnings.filterwarnings("ignore", category=ConvergenceWarning)
 
             try:
+                if self.model.__class__.__name__ in ('DynamicKerasWrapper') and not self.model.isSet:
+                    self.model.preFit(self.x_train, self.y_train)
                 self.model.fit(x_trainTemp, y_trainTemp)
             except ConvergenceWarning as e:
                 if not seenOneConvergenceWarning:
@@ -316,6 +344,17 @@ class AIModel():
                     seenOneConvergenceWarning = True
                 else:
                     pass
+            except DataConversionWarning:
+                y_trainTemp = y_trainTemp.ravel()
+                try:
+                    self.model.fit(x_trainTemp, y_trainTemp)
+                except ConvergenceWarning as e:
+                    if not seenOneConvergenceWarning:
+                        print(Fore.RED, e, Fore.RESET)
+                        seenOneConvergenceWarning = True
+                    else:
+                        pass
+                pass
 
             batchSizeModifier = 0
             batchSizeEndModifier = 0
@@ -323,10 +362,11 @@ class AIModel():
             xTrainLen = len(self.x_train)
 
             if batchSize > xTrainLen:
-                batchSize = xTrainLen
+                batchSize = xTrainLen - 1
 
             while iIter < max_iter:
                 i = batchSize
+
                 batchSizeEndModifier = 0
                 batchSizeModifier = 0
                 reachedEnd = False
@@ -336,7 +376,7 @@ class AIModel():
                 self.x_train = self.x_train[randomize]
                 self.y_train = self.y_train[randomize]
                 
-                while i < xTrainLen:
+                while i != xTrainLen:
                     if self.model.__class__.__name__ in ('StackingClassifier', 'StackingRegressor', 'VotingClassifier', 'VotingRegressor'):
                         randomize = np.arange(len(self.x_train))
                         np.random.shuffle(randomize)
@@ -359,6 +399,17 @@ class AIModel():
                             seenOneConvergenceWarning = True
                         else:
                             pass
+                    except DataConversionWarning:
+                        y_trainTemp = y_trainTemp.ravel()
+                        try:
+                            self.model.fit(x_trainTemp, y_trainTemp)
+                        except ConvergenceWarning as e:
+                            if not seenOneConvergenceWarning:
+                                print(Fore.RED, e, Fore.RESET)
+                                seenOneConvergenceWarning = True
+                            else:
+                                pass
+                        pass
                     
                     if iIter % dumpEachIter == 0 and lastDumpiIter != iIter:
                         lastDumpiIter = iIter
@@ -380,7 +431,7 @@ class AIModel():
                     i += batchSize
                     if i > xTrainLen:
                         reachedEnd = True
-                        i = oldI
+                        i = oldI + 1
                         batchSizeModifier = batchSize
                         batchSizeEndModifier = (xTrainLen - i)
                     else:
@@ -455,12 +506,12 @@ class AIModel():
         pickle_out.close()
 
         if verboseLevel == 2:
-            init(convert=True)
+            
             writePath = "\n[" + Fore.GREEN + 'DUMP' + Fore.RESET + "] Dumping model done. " + os.path.abspath(writePath)
             print(writePath)
 
 
-    def loadBestModel(self, basePath=None, raiseIfDontExist=True, verboseLevel=1):
+    def loadBestModel(self, basePath=None, raiseIfDontExist=True, forceOldest=True, verboseLevel=1):
         '''
             Load the best model for the given model type
 
@@ -469,6 +520,7 @@ class AIModel():
                 1. basePath         : Path to load
                 2. raiseIfDontExist : If no model are available, raise an exception or just ignore
                 3. raiseIfDontExist : Verbose level (0, 1 or 2)
+                4. forceOldest      : Take the oldest model of the best one
 
             RETURNS -> Void
         '''
@@ -483,15 +535,15 @@ class AIModel():
             if dirCategory.split(os.path.sep)[-1] == self.modelName:
                 for file in glob(os.path.join(dirCategory, "*.*")):
                     fileSplitted = file.split(".pymodel")[0].split(os.path.sep)[-1].split('_')
+                    accuracy = fileSplitted[-1]
                     modelType = fileSplitted[-2]
-
+                    modelName = fileSplitted[0]
                     if modelType == "Classifier":
                         self.isClassifier = True
+                        accuracyList.append((file, float(accuracy), self.isClassifier, modelName))
                     elif modelType == "Regressor":
                         self.isClassifier = False
-                    accuracy = fileSplitted[-1]
-                    modelType = fileSplitted[0]
-                    accuracyList.append((file, accuracy, self.isClassifier, modelType))
+                        accuracyList.append((file, 1 - float(accuracy), self.isClassifier, modelName))
 
         if len(accuracyList) == 0:
             if raiseIfDontExist:
@@ -501,16 +553,33 @@ class AIModel():
                 return
 
         if verboseLevel in (1,2):
-            init(convert=True)
             printStr = "\n[" + Fore.GREEN + 'LOAD' + Fore.RESET + "] Loaded best model for \"" + self.modelName + "\"."
+
+            if forceOldest:
+                accuracyList = sorted(accuracyList, key=lambda x: self._getFileModificationDate(x[0]), reverse=True)
+                accuracyList = [accuracyList[i] for i in self._getUniqueIndices([x[3] for x in accuracyList])]
+
             accuracyList = sorted(accuracyList, key=lambda x: float(x[1]), reverse=True)
+
             self.updateModel(cPickle.load(open(accuracyList[0][0], 'rb')))
             printStr += " Type \"" + accuracyList[0][3] + "\""
     
             if accuracyList[0][2] == True:
-                printStr += " Category \"Classifier\". Accuracy: " + Style.BRIGHT + Fore.GREEN + str(accuracyList[0][1]) + Fore.RESET + Style.NORMAL
+                printStr += " Category \"Classifier\". Accuracy: " + Fore.GREEN + str(accuracyList[0][1]) + Fore.RESET
             else:
-                printStr += " Category \"Regressor\". Adjusted R2: " + Style.BRIGHT + Fore.GREEN + str(accuracyList[0][1]) + Fore.RESET + Style.NORMAL
+                printStr += " Category \"Regressor\". Mean Squared Error: " + Fore.GREEN + str(1 - accuracyList[0][1]) + Fore.RESET
     
             print(printStr)
 
+
+    def _getFileModificationDate(self, path):
+        """
+            Get a file last modification date
+
+            RETURNS -> DateTime : modifDate
+        """
+        if platform.system() == 'Windows':
+            return os.path.getctime(path)
+        else:
+            stat = os.stat(path)
+            return stat.st_mtime

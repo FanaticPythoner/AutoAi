@@ -446,7 +446,11 @@ class AutoPreprocessor():
             if (predictAutoTrainer is not None and nanDataHandling != 'predict'):
                 raise Exception("Invalid value combination: if predictAutoTrainer is defined, the nanDataHandling parameter must be set to \"predict\"")
 
-            isAutoTrainer = (predictAutoTrainer is not None and callable(getattr(predictAutoTrainer, "getModelsTypes", None)))
+            isAutoTrainer = (nanDataHandling == 'predict' and predictAutoTrainer is not None and callable(getattr(predictAutoTrainer, "getModelsTypes", None)))
+
+            if not isAutoTrainer and nanDataHandling == 'predict':
+                isAutoTrainer = True
+                predictAutoTrainer = AutoTrainer()
 
             if not isAutoTrainer and nanDataHandling == 'predict':
                 raise Exception("Invalid predict value combination: if nanDataHandling is set to \"predict\", the parameter type of \"nanFixedValue\" must be autoAi.AutoTrainer")
@@ -475,7 +479,7 @@ class AutoPreprocessor():
             return isAutoTrainer
 
 
-    def updateNaNHandlingMethod(self, nanDataHandling, nanFixedValue=None, addIsNanFeature=False, predictAutoTrainer=AutoTrainer(), 
+    def updateNaNHandlingMethod(self, nanDataHandling, nanFixedValue=None, addIsNanFeature=False, predictAutoTrainer=None, 
                                 predictMaxIter=500, predictBatchSize=100, predictDumpEachIter=250, predictTestSize=0.2,
                                 predictVerboseLevel=0, predictKeepBestOnly=True):
         '''
@@ -529,8 +533,8 @@ class AutoPreprocessor():
             self.predictBatchSize = None
             self.predictDumpEachIter = None
             self.predictTestSize = None
-            self.predictVerboseLevel = None    
-            self.predictKeepBestOnly = None        
+            self.predictVerboseLevel = None
+            self.predictKeepBestOnly = None
 
 
     def _validateScaleData(self, scaleDataType=None):
@@ -949,6 +953,19 @@ class AutoPreprocessor():
         if fileType == 'csv':
             self.dataset.to_csv(filePath, index=False)
 
+
+    def plotDataset(self):
+        '''
+            Show a visual representation of the current dataset fetures
+
+            RETURNS -> Void
+        '''
+        import seaborn as sns
+        import matplotlib.pyplot as plt
+        sns.set(style="ticks")
+        sns.set_palette("husl")
+        sns.pairplot(self.getXDataset())
+        plt.show()
 
     def inverseScaleRow(self, rowIndex):
         '''
