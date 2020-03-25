@@ -78,6 +78,9 @@ class AutoPreprocessor():
         self.predictVerboseLevel = None
         self.predictKeepBestOnly = None
 
+        self.ignoreColIndicesScaler = []
+        self.ignoreColIndicesScalerNames = []
+
 
     def _validateFeatureSelectionMethod(self, featureSelectionMethod=None, threshold=None):
         '''
@@ -148,6 +151,8 @@ class AutoPreprocessor():
         self.categoricalIndices = [self.dataset.columns.get_loc(val) for val in self.categoricalIndicesNames]
         self.ordinalIndicesNames = [val for val in self.ordinalIndicesNames if val in self.xIndicesNames or val in self.yIndicesNames]
         self.ordinalIndices = [self.dataset.columns.get_loc(val) for val in self.ordinalIndicesNames]
+        self.ignoreColIndicesScalerNames = [val for val in self.ignoreColIndicesScalerNames if val in self.xIndicesNames or val in self.yIndicesNames]
+        self.ignoreColIndicesScaler = [self.dataset.columns.get_loc(val) for val in self.ignoreColIndicesScalerNames]
 
         x = self.dataset.iloc[:, self.xIndices]
 
@@ -162,6 +167,7 @@ class AutoPreprocessor():
             self.xIndices = [self.dataset.columns.get_loc(val) for val in self.xIndicesNames if val != deletedXVal]
             self.categoricalIndices = [self.dataset.columns.get_loc(val) for val in self.categoricalIndicesNames if val != deletedXVal]
             self.ordinalIndices = [self.dataset.columns.get_loc(val) for val in self.ordinalIndicesNames if val != deletedXVal]
+            self.ignoreColIndicesScaler = [self.dataset.columns.get_loc(val) for val in self.ignoreColIndicesScalerNames if val != deletedXVal]
 
         self.yIndices = [self.dataset.columns.get_loc(val) for val in self.yIndicesNames]
 
@@ -196,6 +202,8 @@ class AutoPreprocessor():
         self.categoricalIndices = [self.dataset.columns.get_loc(val) for val in self.categoricalIndicesNames]
         self.ordinalIndicesNames = [val for val in self.ordinalIndicesNames if val in self.xIndicesNames or val in self.yIndicesNames]
         self.ordinalIndices = [self.dataset.columns.get_loc(val) for val in self.ordinalIndicesNames]
+        self.ignoreColIndicesScalerNames = [val for val in self.ignoreColIndicesScalerNames if val in self.xIndicesNames or val in self.yIndicesNames]
+        self.ignoreColIndicesScaler = [self.dataset.columns.get_loc(val) for val in self.ignoreColIndicesScalerNames]
 
         x = self.dataset.iloc[:, self.xIndices]
 
@@ -210,6 +218,7 @@ class AutoPreprocessor():
             self.xIndices = [self.dataset.columns.get_loc(val) for val in self.xIndicesNames if val != deletedXVal]
             self.categoricalIndices = [self.dataset.columns.get_loc(val) for val in self.categoricalIndicesNames if val != deletedXVal]
             self.ordinalIndices = [self.dataset.columns.get_loc(val) for val in self.ordinalIndicesNames if val != deletedXVal]
+            self.ignoreColIndicesScaler = [self.dataset.columns.get_loc(val) for val in self.ignoreColIndicesScalerNames if val != deletedXVal]
 
         self.yIndices = [self.dataset.columns.get_loc(val) for val in self.yIndicesNames]
 
@@ -231,6 +240,7 @@ class AutoPreprocessor():
         newYIndices = self.yIndices
         newCatIndicesNames = self.categoricalIndicesNames
         newOrdIndicesNames = self.ordinalIndicesNames
+        newIgnoreScalerIndicesNames = self.ignoreColIndicesScalerNames
 
         numVars = len(x.values[0])
         tempNpArr = np.zeros((x.values.shape[0],x.values.shape[1])).astype(int)
@@ -247,6 +257,7 @@ class AutoPreprocessor():
                         newXIndicesNames = [val for val in newXIndicesNames if val != deletedXVal]
                         newCatIndicesNames = [val for val in newCatIndicesNames if val != deletedXVal]
                         newOrdIndicesNames = [val for val in newOrdIndicesNames if val != deletedXVal]
+                        newIgnoreScalerIndicesNames = [val for val in newIgnoreScalerIndicesNames if val != deletedXVal]
 
                         datasetCopy.drop(deletedXVal, axis=1, inplace=True)
                         newXIndices = [datasetCopy.columns.get_loc(val) for val in self.xIndicesNames if val != deletedXVal]
@@ -270,6 +281,8 @@ class AutoPreprocessor():
         self.categoricalIndices =  [datasetCopy.columns.get_loc(val) for val in self.categoricalIndicesNames]
         self.ordinalIndicesNames = newOrdIndicesNames
         self.ordinalIndices = [datasetCopy.columns.get_loc(val) for val in self.ordinalIndicesNames]
+        self.ignoreColIndicesScalerNames = newIgnoreScalerIndicesNames
+        self.ignoreColIndicesScaler = [datasetCopy.columns.get_loc(val) for val in self.ignoreColIndicesScalerNames]
         self.allIndices = [x for x in range(datasetCopy.values.shape[1]) if x in self.xIndices or x in self.yIndices]
 
 
@@ -310,6 +323,8 @@ class AutoPreprocessor():
         self.ordinalIndicesNames = [val for val in self.ordinalIndicesNames if val in self.xIndicesNames or val in self.yIndicesNames]
         self.ordinalIndices = [newDataset.columns.get_loc(val) for val in self.ordinalIndicesNames]
         self.yIndices = [newDataset.columns.get_loc(val) for val in self.yIndicesNames]
+        self.ignoreColIndicesScalerNames = [val for val in self.ignoreColIndicesScalerNames if val in self.xIndicesNames or val in self.yIndicesNames]
+        self.ignoreColIndicesScaler = [newDataset.columns.get_loc(val) for val in self.ignoreColIndicesScalerNames]
 
         self.dataset = newDataset
         return deletedIndex
@@ -330,6 +345,8 @@ class AutoPreprocessor():
             if deletedIndex is None:
                 break
             deletedIndices.append(deletedIndex)
+
+        self.allIndices = [x for x in range(self.dataset.iloc[:, :].values.shape[1])]
         
 
     def _validateDataset(self):
@@ -612,7 +629,7 @@ class AutoPreprocessor():
             self.predictKeepBestOnly = None
 
 
-    def _validateScaleData(self, scaleDataType=None):
+    def _validateScaleData(self, scaleDataType=None, ignoreColIndices=[]):
         '''
             Validate the current scale data
 
@@ -621,11 +638,17 @@ class AutoPreprocessor():
         if scaleDataType is None:
             scaleDataType = self.scaleDataType
 
+        if ignoreColIndices is None:
+            ignoreColIndices = self.ignoreColIndicesScaler
+
+        if type(ignoreColIndices) is not list:
+            raise Exception("Invalid ignoreColIndices type : must type \"list\"")
+
         if scaleDataType is not None and (not all(isinstance(x, str) for x in scaleDataType) or not set(scaleDataType).issubset(self.supportedScaleDataType)):
             raise Exception("Invalid scaleDataType: must be a list of str. Each elements must be present in supportedScaleDataType")
 
 
-    def updateScaleData(self, scaleDataType):
+    def updateScaleData(self, scaleDataType, ignoreColIndices=[]):
         '''
             Update the current scale data type
 
@@ -637,8 +660,10 @@ class AutoPreprocessor():
 
             RETURNS -> Void
         '''
-        self._validateScaleData(scaleDataType)
+        self._validateScaleData(scaleDataType, ignoreColIndices)
         self.scaleDataType = scaleDataType
+        self.ignoreColIndicesScaler = ignoreColIndices
+        self.ignoreColIndicesScalerNames = [self.dataset.columns[x] for x in self.ignoreColIndicesScaler]
         self.scalers = []
 
         if self.scaleDataType is not None:
@@ -887,6 +912,10 @@ class AutoPreprocessor():
             self.categoricalIndicesNames.remove(currColName)
             self.categoricalIndicesNames = self.categoricalIndicesNames + newCols
 
+        if currColName in self.ignoreColIndicesScalerNames:
+            self.ignoreColIndicesScalerNames.remove(currColName)
+            self.ignoreColIndicesScalerNames = self.ignoreColIndicesScalerNames + newCols
+
         self.dataset.drop(currColName, axis=1, inplace=True)
         self.dataset = pd.concat(dfArrayConcat, axis=1)
 
@@ -915,10 +944,15 @@ class AutoPreprocessor():
         '''
         currDataset = self.dataset.iloc[:, :].values
         for i in range(len(self.scalers)):
-            transformed = self.scalers[i].fit_transform(currDataset)
+            if len(self.ignoreColIndicesScaler) > 0:
+                transformed = self.scalers[i].fit_transform(currDataset[:, [x for x in self.allIndices if x not in self.ignoreColIndicesScaler]])
+                transformed = np.concatenate((transformed, currDataset[:, self.ignoreColIndicesScaler]), axis=1)
+            else:
+                transformed = self.scalers[i].fit_transform(currDataset)
 
             newDf = pd.DataFrame(data=transformed, columns=self.dataset.columns)
             newDf.reset_index(drop=True, inplace=True)
+
             self.dataset.iloc[:, :] = newDf
 
 
@@ -962,6 +996,7 @@ class AutoPreprocessor():
         self.categoricalIndices = [self.dataset.columns.get_loc(x) for x in self.categoricalIndicesNames]
         self.ordinalIndices = [self.dataset.columns.get_loc(x) for x in self.ordinalIndicesNames]
         self.allIndices = [x for x in range(self.dataset.iloc[:, :].values.shape[1]) if x in self.xIndices or x in self.yIndices]
+        self.ignoreColIndicesScaler = [self.dataset.columns.get_loc(val) for val in self.ignoreColIndicesScalerNames]
 
 
     def execute(self):
@@ -990,18 +1025,21 @@ class AutoPreprocessor():
             iCol = self.allIndices[i]
             if iCol in self.categoricalIndices:
                 self._executeCategorical(iCol)
+                self._updateAllIndices()
 
             if iCol in self.ordinalIndices:
                 self._executeOrdinal(iCol)
+                self._updateAllIndices()
 
             if self.nanDataHandling != 'predict':
                 self._executeNaN(iCol)
+                self._updateAllIndices()
 
             i = i + 1
 
         if self.scaleDataType is not None and len(self.scaleDataType) > 0:
             self._executeScaler()
-        self._updateAllIndices()
+            self._updateAllIndices()
 
         if self.nanDataHandling == 'predict':
             i = 0
