@@ -4,6 +4,7 @@ import numpy as np
 
 import pandas as pd
 import statsmodels.api as sm
+from statsmodels.stats.outliers_influence import variance_inflation_factor
 from sklearn.preprocessing import LabelEncoder
 from sklearn.preprocessing import OneHotEncoder
 
@@ -40,7 +41,7 @@ class AutoPreprocessor():
     def __init__(self, datasetPath, datasetType, yDataIndices, ignoreColIndices=[], ignoreRowIndices=[]):
         super().__init__()
         self.supportedNanHandlingMethods = ('delete', 'mean', 'median', 'mode', 'fixed', 'predict')
-        self.supportedFeatureSelectionMethod = ('backward', 'recursive', 'embedded')
+        self.supportedFeatureSelectionMethod = ('backward', 'recursive', 'embedded', 'vif')
         self.supportedScaleDataType = ('robust', 'minmax', 'standard')
         self.supportedDatasetType = ('csv')
         self.datasetPath = None
@@ -59,6 +60,7 @@ class AutoPreprocessor():
         self.scalers = None
 
         self.featureSelectionMethod = None
+        self.featureSelectionMethodThreshold = None
         self.predictAutoTrainer = None
         self.ohEncoder = OneHotEncoder()
         self.labelEncoder = LabelEncoder()
@@ -77,7 +79,7 @@ class AutoPreprocessor():
         self.predictKeepBestOnly = None
 
 
-    def _validateFeatureSelectionMethod(self, featureSelectionMethod=None):
+    def _validateFeatureSelectionMethod(self, featureSelectionMethod=None, threshold=None):
         '''
             Validate the current feature selection method
 
@@ -86,11 +88,23 @@ class AutoPreprocessor():
         if featureSelectionMethod is None:
             featureSelectionMethod = self.featureSelectionMethod
 
+        if threshold is None:
+            threshold = self.featureSelectionMethodThreshold
+
         if featureSelectionMethod is not None and featureSelectionMethod not in self.supportedFeatureSelectionMethod:
             raise Exception("Unsupported featureSelectionMethod")
 
+        if threshold is not None and featureSelectionMethod not in ('vif', 'backward'):
+            raise Exception("Invalid parameters combination : if threshold is set, featureSelectionMethod must be either 'vif' or 'backward'")
 
-    def updateFeatureSelectionMethod(self, featureSelectionMethod):
+        if threshold is not None and (threshold >= 1 and threshold <= 0) and featureSelectionMethod == 'backward':
+            raise Exception("Invalid threshold : The threshold for 'backward' must be between 0 and 1")
+
+        if threshold is not None and threshold <= 1 and featureSelectionMethod == 'vif':
+            raise Exception("Invalid threshold : The threshold for 'vif' must be smaller than 1")
+
+
+    def updateFeatureSelectionMethod(self, featureSelectionMethod, threshold=None):
         '''
             Update the AutoProcessor feature selection method
 
@@ -99,12 +113,14 @@ class AutoPreprocessor():
             1. 'backward'  : Backward Elimination feature selection
             2. 'recursive' : Recursive Elimination feature selection
             3. 'embedded'  : Embedded Elimination feature selection
+            4. 'vif'       : VIF (Variable Inflation Factors) Elimination feature selection
 
             RETURNS -> Void
         '''
         self._validateDataset()
-        self._validateFeatureSelectionMethod(featureSelectionMethod)
+        self._validateFeatureSelectionMethod(featureSelectionMethod, threshold)
         self.featureSelectionMethod = featureSelectionMethod
+        self.featureSelectionMethodThreshold = threshold
 
 
     def _embeddedElimination(self):
@@ -201,7 +217,7 @@ class AutoPreprocessor():
     def _backwardElimination(self, SL=0.05):
         '''
             Perform automatic backward elimination on independent variables
-            with a given treshhold (SL)
+            with a given threshold (SL)
 
             RETURNS -> Void
         '''
@@ -255,7 +271,66 @@ class AutoPreprocessor():
         self.ordinalIndicesNames = newOrdIndicesNames
         self.ordinalIndices = [datasetCopy.columns.get_loc(val) for val in self.ordinalIndicesNames]
         self.allIndices = [x for x in range(datasetCopy.values.shape[1]) if x in self.xIndices or x in self.yIndices]
- 
+
+
+    def _getVif(self, threshold):
+        '''
+            Get the current X dataset VIF values
+
+            RETURNS -> Int : deletedIndex
+        '''
+        deletedIndices = []
+        valsVif = []
+        newDataset = deepcopy(self.dataset.iloc[:, self.xIndices])
+        yDataset = deepcopy(self.dataset.iloc[:, self.yIndices])
+        datasetLen = newDataset.shape[1]
+        i = 0
+        while i < datasetLen:
+            currVif = variance_inflation_factor(self.dataset.values, i)
+            valsVif.append((newDataset.columns[i], currVif))
+            if currVif >= threshold:
+                deletedIndices.append((i, currVif))
+            i = i + 1
+        
+        if len(deletedIndices) == 0:
+            return None
+
+        deletedIndices = sorted(deletedIndices, key=lambda x: float(x[1]), reverse=True)
+        deletedIndex = deletedIndices[0][0]
+        deletedName = newDataset.columns[deletedIndex]
+
+        newDataset.drop(newDataset.columns[deletedIndex], axis=1, inplace=True)
+
+        self.xIndicesNames = [x for x in newDataset.columns if x != deletedName]
+        self.xIndices = [newDataset.columns.get_loc(val) for val in self.xIndicesNames]
+
+        newDataset = pd.concat([newDataset] + [yDataset], axis=1)
+        self.categoricalIndicesNames = [val for val in self.categoricalIndicesNames if val in self.xIndicesNames or val in self.yIndicesNames]
+        self.categoricalIndices = [newDataset.columns.get_loc(val) for val in self.categoricalIndicesNames]
+        self.ordinalIndicesNames = [val for val in self.ordinalIndicesNames if val in self.xIndicesNames or val in self.yIndicesNames]
+        self.ordinalIndices = [newDataset.columns.get_loc(val) for val in self.ordinalIndicesNames]
+        self.yIndices = [newDataset.columns.get_loc(val) for val in self.yIndicesNames]
+
+        self.dataset = newDataset
+        return deletedIndex
+
+
+    def _vifElimination(self, threshold=10):
+        '''
+            Perform VIF (Variable Inflation Factors) elimination on independent variables
+            with a given threshold
+
+            RETURNS -> Void
+        '''
+        deletedIndices = []
+        deletedIndex = -1
+
+        while True:
+            deletedIndex = self._getVif(threshold)
+            if deletedIndex is None:
+                break
+            deletedIndices.append(deletedIndex)
+        
 
     def _validateDataset(self):
         '''
@@ -855,11 +930,15 @@ class AutoPreprocessor():
             RETURNS -> Void                   
         '''
         if self.featureSelectionMethod == 'backward':
-            self._backwardElimination()
+            if self.featureSelectionMethodThreshold is not None:
+                self._backwardElimination(SL=self.featureSelectionMethodThreshold)
         elif self.featureSelectionMethod == 'recursive':
             self._recursiveElimination()
         elif self.featureSelectionMethod == 'embedded':
             self._embeddedElimination()
+        elif self.featureSelectionMethod == 'vif':
+            if self.featureSelectionMethodThreshold is not None:
+                self._vifElimination(threshold=self.featureSelectionMethodThreshold)
 
 
     def _delIgnoreRow(self):
@@ -966,6 +1045,7 @@ class AutoPreprocessor():
         sns.set_palette("husl")
         sns.pairplot(self.getXDataset())
         plt.show()
+
 
     def inverseScaleRow(self, rowIndex):
         '''
