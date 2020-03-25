@@ -9,6 +9,7 @@ AutoAi is a high-level AI automation library that allows things like automatic t
 - Added support for clearing unwanted models after training in the [*AIModel*](https://github.com/FanaticPythoner/AutoAi#aimodel-class) class
 - Added support for VIF (Variable Inflation Factors) Elimination feature selection
 - Added multiple examples
+- Added support for ignoring columns in scaling
 - Changed the [*AutoTrainer*](https://github.com/FanaticPythoner/AutoAi#autotrainer-class) list implementation for easier understanding
 
 ### Language: ### 
