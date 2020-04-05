@@ -3,8 +3,13 @@ import sklearn.linear_model
 import sklearn.naive_bayes
 import sklearn.svm
 
+import os
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '1'
+
 # DynamicKerasWrapper
 from keras.layers import Dense
+from keras.layers import LSTM
+from keras.layers import Bidirectional
 from keras.models import Sequential
 from math import ceil
 import numpy as np
@@ -27,6 +32,7 @@ class AutoTrainer():
         '''
         return [
             DynamicKerasWrapper(),
+            DynamicLSTMKerasWrapper(),
             sklearn.ensemble.RandomForestClassifier(),
             sklearn.ensemble.RandomForestRegressor(),
             sklearn.ensemble.GradientBoostingClassifier(),
@@ -77,10 +83,12 @@ class DynamicKerasWrapper(ICustomWrapper):
     '''
         Class that dynamically create a keras model during fitting
     '''
-    def __init__(self, scalingFactor=3, learningRate=0.05):
+    def __init__(self, scalingFactor=3, learningRate=0.05, layersCount=2):
         self.scalingFactor = scalingFactor
         self.isSet = False
         self.learningRate = learningRate
+        self.model = None
+        self.layersCount = layersCount
 
 
     def preFit(self, X, y):
@@ -96,7 +104,7 @@ class DynamicKerasWrapper(ICustomWrapper):
             loss, metric, output_dim = self._getLoss(X, y)
 
             self._createModel(input_dim=input_dim, output_dim=output_dim,
-                              nodes=neuronsCount, layersCount=2, loss=loss,
+                              nodes=neuronsCount, layersCount=self.layersCount, loss=loss,
                               metric=metric)
             self.isSet = True
 
@@ -154,6 +162,161 @@ class DynamicKerasWrapper(ICustomWrapper):
 
         for _ in range(layersCount - 1):
             self.model.add(Dense(nodes, activation='relu'))
+        self.model.add(Dense(output_dim, activation='sigmoid'))
+
+        self.model.compile(loss=loss, 
+                      optimizer=Adam(learning_rate=self.learningRate), 
+                      metrics=[metric])
+
+
+    def _getLoss(self, X, y):
+        '''
+            Get the optimal loss function for a given
+            Y dataset
+
+            RETURNS -> (Str : Loss, Str : Metric, Int : Output_Dim)
+        '''
+
+        def isClassifier(X, y):
+            try:
+                _ = metrics.accuracy_score(y, y)
+                return True
+            except ValueError as e:
+                n = y.shape[0]
+                p = X.shape[1]
+                _ = 1-(1-metrics.r2_score(y, y))*(n-1)/(n-p-1)
+                return False
+
+        def uniqueIndices(y):
+            seen = set()
+            res = []
+            for i, n in enumerate(y):
+                if n not in seen:
+                    res.append(i)
+                    seen.add(n)
+            return len(res)
+
+        def isAllInteger(y):
+            return np.equal(np.mod(y, 1), 0)
+
+        isClassifier = isClassifier(X, y)
+        output_dim = self._getOutputDim(y)
+        maxVal = np.max(y)
+        minVal = np.min(y)
+
+        if output_dim == 1 and maxVal <= 1 and minVal >= 0:
+            return ('binary_crossentropy', 'accuracy', output_dim)
+
+        if output_dim == 1 and (maxVal >= 1 or minVal <= 0):
+            return ('mean_squared_error', 'mean_squared_error', output_dim)
+
+        isAllInt = isAllInteger(y).all()
+
+        if isAllInt and minVal == 0 and maxVal == 1:
+            return ('categorical_crossentropy', 'mean_squared_error', output_dim)
+
+        if isAllInt:
+            return ('sparse_categorical_crossentropy', 'sparse_categorical_accuracy', uniqueIndices(y))
+
+        if output_dim >= 1 and not isAllInt:
+            return ('mean_squared_error', 'mean_squared_error', output_dim)
+
+        raise Exception("Unsupported output type")
+
+
+
+class DynamicLSTMKerasWrapper(ICustomWrapper):
+    '''
+        Class that dynamically create a LSTM keras model during fitting
+    '''
+    def __init__(self, scalingFactor=3, learningRate=0.05, bidirectional=True, layersCount=3):
+        self.scalingFactor = scalingFactor
+        self.isSet = False
+        self.learningRate = learningRate
+        self.model = None
+        self.bidirectional = bidirectional
+        self.layersCount = layersCount
+
+
+    def preFit(self, X, y):
+        '''
+            Create a dynamic Keras model
+
+            RETURNS -> Void
+        '''
+        if not self.isSet:
+            input_dim = self._getInputDim(X)
+            output_dim = self._getOutputDim(y)
+            neuronsCount = ceil(X.shape[0] / (self.scalingFactor * (input_dim + output_dim)))
+            loss, metric, output_dim = self._getLoss(X, y)
+
+            self._createModel(input_dim=input_dim, output_dim=output_dim,
+                              nodes=neuronsCount, layersCount=self.layersCount, loss=loss,
+                              metric=metric, batch_size=X.shape[0])
+            self.isSet = True
+
+
+    def fit(self, X, y):
+        '''
+            Train the model on a given X and Y dataset
+
+            RETURNS -> Void
+        '''
+        X = np.reshape(X, (X.shape[0], 1, X.shape[1]))
+        self.model.fit(X, y, verbose=0)
+
+
+    def predict(self, X):
+        '''
+            Predict X values
+
+            RETURNS -> np.Array(Float) : Predictions
+        '''
+        X = np.reshape(X, (X.shape[0], 1, X.shape[1]))
+        return self.model.predict(X)
+
+
+    def _getOutputDim(self, y):
+        '''
+            Get the number of input dim from dataset
+
+            RETURNS -> Int
+        '''
+        if len(y.shape) == 1:
+            return 1
+        else:
+            return y.shape[1]
+
+
+    def _getInputDim(self, x):
+        '''
+            Get the number of input dim from dataset
+
+            RETURNS -> Int
+        '''
+        if len(x.shape) == 1:
+            return 1
+        else:
+            return x.shape[1]
+
+
+    def _createModel(self, input_dim, output_dim, nodes, layersCount, loss, metric, batch_size):
+        '''
+            Create the keras model with the specified parameters
+
+            RETURNS -> Void
+        '''
+        self.model = Sequential()
+        self.model.add(LSTM(units=nodes, batch_input_shape=(None, 1, input_dim), activation='relu', return_sequences=True))
+
+        for _ in range(layersCount - 2):
+            layer = LSTM(units=nodes, activation='relu', return_sequences=True)
+            if self.bidirectional:
+                layer = Bidirectional(layer)
+
+            self.model.add(layer)
+
+        self.model.add(Bidirectional(LSTM(units=nodes, activation='relu')))
         self.model.add(Dense(output_dim, activation='sigmoid'))
 
         self.model.compile(loss=loss, 

@@ -174,7 +174,14 @@ class AIModel():
 
             RETURNS -> Float : Accuracy
         '''
+        def allInt(arr):
+            flattened = arr.flatten().astype(float)
+            return (flattened.astype(int) == flattened).all()
+
         y_pred = self.model.predict(self.x_test)
+        if allInt(self.y_test):
+            y_pred = np.rint(y_pred)
+
         try:
             accuracyScore = metrics.accuracy_score(self.y_test, y_pred)
             self.isClassifier = True
@@ -249,7 +256,7 @@ class AIModel():
                 tmpYTrain = self.y_train
 
             try:
-                if instance.__class__.__name__ in ('DynamicKerasWrapper') and not instance.isSet:
+                if instance.__class__.__name__ in ('DynamicKerasWrapper', 'DynamicLSTMKerasWrapper') and not instance.isSet:
                     instance.preFit(self.x_train, self.y_train)
                 instance.fit(tmpXTrain, tmpYTrain)
                 compModelsInstances.append(instance)
@@ -335,7 +342,7 @@ class AIModel():
                 warnings.filterwarnings("ignore", category=ConvergenceWarning)
 
             try:
-                if self.model.__class__.__name__ in ('DynamicKerasWrapper') and not self.model.isSet:
+                if self.model.__class__.__name__ in ('DynamicKerasWrapper', 'DynamicLSTMKerasWrapper') and not self.model.isSet:
                     self.model.preFit(self.x_train, self.y_train)
                 self.model.fit(x_trainTemp, y_trainTemp)
             except ConvergenceWarning as e:
