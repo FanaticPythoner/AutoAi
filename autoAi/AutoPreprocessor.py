@@ -745,7 +745,12 @@ class AutoPreprocessor():
         '''
         newCol = np.zeros(currDataset.values.shape)
         for i, val in enumerate(currDataset.values):
-            if np.isnan(val):
+            isNan = False
+            try:
+                isNan = np.isnan(val)
+            except Exception as e:
+                pass
+            if isNan:
                 newCol[i] = 1
         newDf = pd.DataFrame(data=newCol, columns=[self.dataset.columns[iCol] + '_IsNaN'])
         newDf.reset_index(drop=True, inplace=True)
