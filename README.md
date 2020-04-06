@@ -164,10 +164,10 @@ from autoAi.AutoPreprocessor import AutoPreprocessor
 
 # Create the AutoPreprocessor object
 obj = AutoPreprocessor(datasetPath='Test_Dataset\\iris.csv', 
-                       datasetType='csv', yDataIndices=[4])
+                       datasetType='csv', yDataNames=['species'])
 
-# Specify the dataset ordinal indices
-obj.updateCategoricalIndices(categoricalIndices=[4])
+# Specify the dataset categorical names
+obj.updateCategoricalColumns(categoricalNames=['species'])
 
 # Specify the current data scale type
 obj.updateScaleData(scaleDataType=['minmax'])
@@ -204,10 +204,10 @@ class CustomAutoTrainer():
 
 # Create the AutoPreprocessor object
 obj = AutoPreprocessor(datasetPath='Test_Dataset\\iris.csv', 
-                       datasetType='csv', yDataIndices=[4])
+                       datasetType='csv', yDataNames=['species'])
 
-# Specify the dataset ordinal indices
-obj.updateCategoricalIndices(categoricalIndices=[4])
+# Specify the dataset categorical names
+obj.updateCategoricalColumns(categoricalNames=['species'])
 
 # Specify the current data scale type
 obj.updateScaleData(scaleDataType=['minmax'])
