@@ -31,14 +31,14 @@ class AutoPreprocessor():
 
                 1. datasetPath      : Path of the dataset
                 2. datasetType      : Type of the dataset ('csv'...)
-                3. yDataIndices     : List of indices of the dependent variables in the dataset
-                4. ignoreColIndices : List of indices of the columns to ignore in the dataset
+                3. yDataNames       : List of names of the dependent variables in the dataset
+                4. ignoreColNames   : List of indices of the columns to ignore in the dataset
                 5. ignoreRowIndices : List of indices of the rows to ignore in the dataset
 
         For documentation, refer to https://github.com/FanaticPythoner/AutoAi
     '''
     
-    def __init__(self, datasetPath, datasetType, yDataIndices, ignoreColIndices=[], ignoreRowIndices=[]):
+    def __init__(self, datasetPath, datasetType, yDataNames, ignoreColNames=[], ignoreRowIndices=[]):
         super().__init__()
         self.supportedNanHandlingMethods = ('delete', 'mean', 'median', 'mode', 'fixed', 'predict')
         self.supportedFeatureSelectionMethod = ('backward', 'recursive', 'embedded', 'vif')
@@ -64,7 +64,7 @@ class AutoPreprocessor():
         self.predictAutoTrainer = None
         self.ohEncoder = OneHotEncoder()
         self.labelEncoder = LabelEncoder()
-        self.updateDataset(datasetPath, datasetType, yDataIndices, ignoreColIndices, ignoreRowIndices)
+        self.updateDataset(datasetPath, datasetType, yDataNames, ignoreColNames, ignoreRowIndices)
 
         self.categoricalIndicesNames = []
         self.ordinalIndicesNames = []
@@ -383,7 +383,7 @@ class AutoPreprocessor():
             raise Exception("Invalid yIndices : all yIndices must be present in allIndices")
 
 
-    def updateDataset(self, datasetPath, datasetType, yDataIndices, ignoreColIndices=[], ignoreRowIndices=[]):
+    def updateDataset(self, datasetPath, datasetType, yDataNames, ignoreColNames=[], ignoreRowIndices=[]):
         '''
             Update the AutoPreprocessor dataset
 
@@ -391,20 +391,20 @@ class AutoPreprocessor():
 
                 1. datasetPath      : Path of the dataset
                 2. datasetType      : Type of the dataset ('csv'...)
-                3. yDataIndices     : List of indices of the dependent variables in the dataset
-                4. ignoreColIndices : List of indices of the columns to ignore in the dataset
+                3. yDataNames       : List of indices of the dependent variables in the dataset
+                4. ignoreColNames   : List of indices of the columns to ignore in the dataset
                 5. ignoreRowIndices : List of indices of the rows to ignore in the dataset
 
             RETURNS -> Void
         '''
-        if type(ignoreColIndices) is not list:
-            raise Exception("Invalid ignoreColIndices type : must type \"list\"")
+        if type(ignoreColNames) is not list:
+            raise Exception("Invalid ignoreColNames type : must type \"list\"")
 
         if type(ignoreRowIndices) is not list:
             raise Exception("Invalid ignoreRowIndices type : must type \"list\"")        
 
-        if type(yDataIndices) is not list:
-            raise Exception("Invalid yDataIndices type : must type \"list\"")
+        if type(yDataNames) is not list:
+            raise Exception("Invalid yDataNames type : must type \"list\"")
 
         if datasetType not in ("csv"):
             raise Exception("Unsupported dataset type")
@@ -420,11 +420,16 @@ class AutoPreprocessor():
                 self.dataset = pd.read_csv(datasetPath)
             except Exception as e:
                 self.dataset = None
-                raise Exception("Invalid dataset ty file.")
+                raise Exception("Invalid dataset type file.")
 
-        self.allIndices = [x for x in range(self.dataset.iloc[:, :].values.shape[1]) if x not in ignoreColIndices]
+        for colName in ignoreColNames:
+            self.dataset.drop(colName, axis=1, inplace=True)
 
-        for i in yDataIndices:
+        self.allIndices = [x for x in range(self.dataset.iloc[:, :].values.shape[1])]
+
+        self.yIndices = [x for x in range(self.dataset.iloc[:, :].values.shape[1]) if self.dataset.columns[x] in yDataNames]
+
+        for i in self.yIndices:
             if i not in self.allIndices:
                 raise Exception("Invalid y data index : " + str(i))
 
@@ -436,7 +441,7 @@ class AutoPreprocessor():
         self.datasetType = datasetType
         self.datasetPath = datasetPath
         self.allRowsIndices = [x for x in range(self.dataset.iloc[:, :].values.shape[0]) if x not in ignoreRowIndices]
-        self.yIndices = yDataIndices
+
         self.xIndices = [x for x in self.allIndices if x not in self.yIndices]
 
 
@@ -457,17 +462,18 @@ class AutoPreprocessor():
                 raise Exception("Invalid categorical data index : " + str(i))
 
 
-    def updateCategoricalIndices(self, categoricalIndices):
+    def updateCategoricalColumns(self, categoricalNames):
         '''
             Update the dataset indices to be treated as categorical
 
             Parameters:
 
-                1. categoricalIndices : List of indices of the categorical columns in the dataset
+                1. categoricalNames : List of names of the categorical columns in the dataset
 
             RETURNS -> Void
         '''
         self._validateDataset()
+        categoricalIndices = [self.dataset.columns.get_loc(x) for x in categoricalNames]
         self._validateCategoricalIndices(categoricalIndices)
         self.categoricalIndices = categoricalIndices
 
@@ -489,17 +495,18 @@ class AutoPreprocessor():
                 raise Exception("Invalid ordinal data index : " + str(i))
 
 
-    def updateOrdinalIndices(self, ordinalIndices):
+    def updateOrdinalColumns(self, ordinalNames):
         '''
             Update the dataset indices to be treated as ordinal
 
             Parameters:
 
-                1. ordinalIndices : List of indices of the ordinal columns in the dataset
+                1. ordinalNames : List of names of the ordinal columns in the dataset
 
             RETURNS -> Void
         '''
         self._validateDataset()
+        ordinalIndices = [self.dataset.columns.get_loc(x) for x in ordinalNames]
         self._validateOrdinalIndices(ordinalIndices)
         self.ordinalIndices = ordinalIndices
 
@@ -648,7 +655,7 @@ class AutoPreprocessor():
             raise Exception("Invalid scaleDataType: must be a list of str. Each elements must be present in supportedScaleDataType")
 
 
-    def updateScaleData(self, scaleDataType, ignoreColIndices=[]):
+    def updateScaleData(self, scaleDataType, ignoreColNames=[]):
         '''
             Update the current scale data type
 
@@ -660,6 +667,12 @@ class AutoPreprocessor():
 
             RETURNS -> Void
         '''
+        ignoreColIndices = []
+        try:
+            ignoreColIndices = [self.dataset.columns.get_loc(x) for x in self.dataset.columns if x in ignoreColNames]
+        except Exception as e:
+            pass
+
         self._validateScaleData(scaleDataType, ignoreColIndices)
         self.scaleDataType = scaleDataType
         self.ignoreColIndicesScaler = ignoreColIndices
@@ -950,7 +963,10 @@ class AutoPreprocessor():
             else:
                 transformed = self.scalers[i].fit_transform(currDataset)
 
-            newDf = pd.DataFrame(data=transformed, columns=self.dataset.columns)
+            newCols = [x for x in self.dataset.columns if self.dataset.columns.get_loc(x) not in self.ignoreColIndicesScaler]
+            newCols = newCols + [self.dataset.columns[x] for x in self.ignoreColIndicesScaler]
+
+            newDf = pd.DataFrame(data=transformed, columns=newCols)
             newDf.reset_index(drop=True, inplace=True)
 
             self.dataset.iloc[:, :] = newDf
