@@ -4,7 +4,7 @@ from autoAi.AutoPreprocessor import AutoPreprocessor
 obj = AutoPreprocessor(datasetPath='Test_Dataset\\iris.csv', 
                        datasetType='csv', yDataNames=['species'])
 
-# Creating a functionn to apply on each specified element of a given column
+# Creating a function to apply on each specified element of a given column
 def addString(column):
     return column + ' is Amazing!'
 
