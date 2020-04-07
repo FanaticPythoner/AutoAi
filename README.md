@@ -4,6 +4,7 @@ AutoAi is a high-level AI automation library that allows things like automatic t
 ## Update: ##
 - Added support in the [*AutoPreprocessor*](https://github.com/FanaticPythoner/AutoAi#autopreprocessor-class) for applying custom functions (or lambda) on specific columns at specific time using the *addApplyFunctionForColumn* method
 - Added examples for the *addApplyFunctionForColumn* method in the [*AutoPreprocessor*](https://github.com/FanaticPythoner/AutoAi#autopreprocessor-class) class
+- Added support for exporting the scalers when calling the *export* method in the [*AutoPreprocessor*](https://github.com/FanaticPythoner/AutoAi#autopreprocessor-class) class
 
 ### Language: ### 
 
