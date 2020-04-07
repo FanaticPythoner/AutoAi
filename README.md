@@ -228,19 +228,6 @@ from autoAi.AutoPreprocessor import AutoPreprocessor
 
 # Create the AutoPreprocessor object
 obj = AutoPreprocessor(datasetPath='Test_Dataset\\iris.csv', 
-from autoAi.AutoPreprocessor import AutoPreprocessor
-
-# Creating the custom AutoTrainer class
-class CustomAutoTrainer():
-    def getModelsTypes(self):
-        import sklearn.ensemble
-        return [
-            sklearn.ensemble.VotingRegressor(estimators=[('lr', sklearn.linear_model.LinearRegression()),
-                                                         ('rf', sklearn.ensemble.RandomForestRegressor(n_estimators=50))])
-        ]
-
-# Create the AutoPreprocessor object
-obj = AutoPreprocessor(datasetPath='Test_Dataset\\iris.csv', 
                        datasetType='csv', yDataNames=['species'])
 
 # Specify the dataset categorical names
