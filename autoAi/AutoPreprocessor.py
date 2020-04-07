@@ -44,6 +44,7 @@ class AutoPreprocessor():
         self.supportedFeatureSelectionMethod = ('backward', 'recursive', 'embedded', 'vif')
         self.supportedScaleDataType = ('robust', 'minmax', 'standard')
         self.supportedDatasetType = ('csv')
+        self.supportedStepAddFunctionApply = (0,1,2,3,4,5)
         self.datasetPath = None
         self.datasetType = None
         self.nanDataHandling = None
@@ -64,6 +65,15 @@ class AutoPreprocessor():
         self.predictAutoTrainer = None
         self.ohEncoder = OneHotEncoder()
         self.labelEncoder = LabelEncoder()
+        self.dicFunctionColumnsApplyList = {}
+        self.dicFunctionColumnsApplyListSteps = {
+            0:False,
+            1:False,
+            2:False,
+            3:False,
+            4:False,
+            5:False
+        }
         self.updateDataset(datasetPath, datasetType, yDataNames, ignoreColNames, ignoreRowIndices)
 
         self.categoricalIndicesNames = []
@@ -444,6 +454,9 @@ class AutoPreprocessor():
 
         self.xIndices = [x for x in self.allIndices if x not in self.yIndices]
 
+        for name in self.dataset.columns.values:
+            self.dicFunctionColumnsApplyList[name] = []
+
 
     def _validateCategoricalIndices(self, categoricalIndices=None):
         '''
@@ -689,6 +702,40 @@ class AutoPreprocessor():
                     self.scalers.append(StandardScaler())
 
 
+    def _validateAddApplyFunctionForColumn(self, colName, step):
+        '''
+            Validate the a function to apply
+
+            RETURNS -> Void
+        '''
+        if colName not in self.dataset.columns.values:
+            raise Exception('Invalid colName')
+
+        if step not in self.supportedStepAddFunctionApply :
+            raise Exception('Unsupported step')
+
+
+    def addApplyFunctionForColumn(self, colName, function, step=0):
+        '''
+            Add a function to apply to a given column in the current dataset
+
+            Parameters:
+
+                1. colName             : Name of the column to apply the function on
+                2. function            : Function to apply
+                3. step                : When will the function be applied to the column.
+                                            a) 0 : Before doing any preprocessing
+                                            b) 1 : After doing the categorical preprocessing
+                                            c) 2 : After doing the ordinal preprocessing
+                                            d) 3 : After doing the NaN preprocessing (if NaN is 'predict', it's actually after scaling (4).)
+                                            e) 4 : After doing the scaling preprocessing
+                                            f) 5 : After doing the feature selection preprocessing
+        '''
+        self._validateAddApplyFunctionForColumn(colName, step)
+        self.dicFunctionColumnsApplyListSteps[step] = True
+        self.dicFunctionColumnsApplyList[colName].append((function, step))
+
+
     def getFullDataset(self, asArray=False):
         '''
             Return the current processed dataset
@@ -883,14 +930,17 @@ class AutoPreprocessor():
             Execute the categorical data handling on a column on the current
             dataset
 
-            RETURNS -> Void
+            RETURNS -> Int : CategoricalIndexModifier
         '''
         currDataset = self.dataset.iloc[:, iCol].values
-        transformed = self.ohEncoder.fit_transform(currDataset.reshape(-1, 1)).toarray()[:, :-1]
+        transformed = self.ohEncoder.fit_transform(currDataset.reshape(-1, 1)).toarray()
+        if transformed.shape[1] > 1:
+            transformed = transformed[:, :-1]
 
         indices = [x for x in range(iCol, iCol + transformed.shape[1], 1)]
         newCols = [self.dataset.columns[[iCol]][0] + "_Categorical_" + str(x) for x in indices]
 
+        categoricalIndexModifier = len(newCols) - 1
 
         dfArray = []
         for dim in range(transformed.shape[1]):
@@ -898,44 +948,57 @@ class AutoPreprocessor():
             newDf.reset_index(drop=True, inplace=True)
             dfArray.append(newDf)
 
-        dfArrayLen = len(dfArray)
-        dfArray = pd.concat(dfArray, axis=1)
+        if len(dfArray) > 0:
+            dfArray = pd.concat(dfArray, axis=1)
 
         dfArrayConcat = []
         dfBefore = self.dataset.iloc[:, :iCol]
         dfBefore.reset_index(drop=True, inplace=True)
         dfArrayConcat.append(dfBefore)
 
-        dfArrayConcat.append(dfArray)
+        if len(dfArray) > 0:
+            dfArrayConcat.append(dfArray)
 
-        dfAfter = self.dataset.iloc[:, (iCol + dfArrayLen):]
+        dfAfter = self.dataset.iloc[:, (iCol + 1):]
         dfAfter.reset_index(drop=True, inplace=True)
         dfArrayConcat.append(dfAfter)
         
         currColName = self.dataset.columns[iCol]
 
         if currColName in self.xIndicesNames:
+            currColNameIndex = self.xIndicesNames.index(currColName)
             self.xIndicesNames.remove(currColName)
-            self.xIndicesNames = self.xIndicesNames + newCols
+            self.xIndicesNames = self.xIndicesNames[:currColNameIndex] + newCols + self.xIndicesNames[currColNameIndex:]
 
         if currColName in self.yIndicesNames:
+            currColNameIndex = self.yIndicesNames.index(currColName)
             self.yIndicesNames.remove(currColName)
-            self.yIndicesNames = self.yIndicesNames + newCols
+            self.yIndicesNames = self.yIndicesNames[:currColNameIndex] + newCols + self.yIndicesNames[currColNameIndex:]
 
         if currColName in self.ordinalIndicesNames:
+            currColNameIndex = self.ordinalIndicesNames.index(currColName)
             self.ordinalIndicesNames.remove(currColName)
-            self.ordinalIndicesNames = self.ordinalIndicesNames + newCols
+            self.ordinalIndicesNames = self.ordinalIndicesNames[:currColNameIndex] + newCols + self.ordinalIndicesNames[currColNameIndex:]
 
         if currColName in self.categoricalIndicesNames:
+            currColNameIndex = self.categoricalIndicesNames.index(currColName)
             self.categoricalIndicesNames.remove(currColName)
-            self.categoricalIndicesNames = self.categoricalIndicesNames + newCols
+            self.categoricalIndicesNames = self.categoricalIndicesNames[:currColNameIndex] + newCols + self.categoricalIndicesNames[currColNameIndex:]
 
         if currColName in self.ignoreColIndicesScalerNames:
+            currColNameIndex = self.ignoreColIndicesScalerNames.index(currColName)
             self.ignoreColIndicesScalerNames.remove(currColName)
-            self.ignoreColIndicesScalerNames = self.ignoreColIndicesScalerNames + newCols
+            self.ignoreColIndicesScalerNames = self.ignoreColIndicesScalerNames[:currColNameIndex] + newCols + self.ignoreColIndicesScalerNames[currColNameIndex:]
+
+        for key in list(self.dicFunctionColumnsApplyList.keys()):
+            if currColName == key:
+                oldVal = self.dicFunctionColumnsApplyList.pop(key)
+                for newColName in newCols:
+                    self.dicFunctionColumnsApplyList[newColName] = oldVal 
 
         self.dataset.drop(currColName, axis=1, inplace=True)
         self.dataset = pd.concat(dfArrayConcat, axis=1)
+        return categoricalIndexModifier
 
 
     def _executeOrdinal(self, iCol):
@@ -1019,6 +1082,66 @@ class AutoPreprocessor():
         self.allIndices = [x for x in range(self.dataset.iloc[:, :].values.shape[1]) if x in self.xIndices or x in self.yIndices]
         self.ignoreColIndicesScaler = [self.dataset.columns.get_loc(val) for val in self.ignoreColIndicesScalerNames]
 
+    
+    def _executeStep(self, step, colName=None, index=None):
+        '''
+            Execute all the function to apply to columns for a given step
+
+            RETURNS -> Void
+        '''
+        def applyToCol(key, function):
+            newDf = getattr(self.dataset, key).apply(function)
+            newDf.values
+            setattr(self.dataset, key, newDf)
+
+        def getNewIndexCategorical(oldColName, oldIndex):
+            partCategorical = '_Categorical_' + str(oldIndex)
+            newColName = oldColName + partCategorical
+            while newColName in self.dicFunctionColumnsApplyList:
+                oldIndex = oldIndex - 1
+                newColName = oldColName + '_Categorical_' + str(oldIndex)
+            oldIndex = oldIndex + 1
+            return oldIndex
+
+        def applyToColLoopIter(val, col):
+            function, currStep = val
+            if currStep == step:
+                applyToCol(col, function)
+
+        if self.dicFunctionColumnsApplyListSteps[step]:
+            lst = None
+            
+            if colName is None:
+                for key, lst in list(self.dicFunctionColumnsApplyList.items()):
+                    for val in lst:
+                        applyToColLoopIter(val, key)
+                return
+
+            try:
+                partCategorical = '_Categorical_' + str(index)
+                if colName.endswith(partCategorical):
+                    colName = partCategorical.join(colName.split(partCategorical)[:-1])
+                    index = getNewIndexCategorical(colName, index)
+                    raise KeyError()
+                lst = self.dicFunctionColumnsApplyList[colName]
+                for val in lst:
+                    applyToColLoopIter(val, colName)
+
+            except KeyError:
+                newColName = colName + '_Categorical_' + str(index)
+                lst = self.dicFunctionColumnsApplyList[newColName]
+                index = getNewIndexCategorical(colName, index)
+                newColName = colName + '_Categorical_' + str(index)
+                modifier = 0
+
+                while newColName in self.dicFunctionColumnsApplyList:
+                    lst = self.dicFunctionColumnsApplyList[newColName]
+                    for val in lst:
+                        applyToColLoopIter(val, newColName)
+
+                    modifier = modifier + 1
+                    newColName = colName + '_Categorical_' + str(index + modifier)
+                    
 
     def execute(self):
         '''
@@ -1040,27 +1163,41 @@ class AutoPreprocessor():
         self.xIndicesNames = [self.dataset.columns[x] for x in self.xIndices]
         self.yIndicesNames = [self.dataset.columns[x] for x in self.yIndices]
 
+        self._executeStep(0)
+
         i = 0
         iCol = 0
+        categoricalIndexModifier = 0
         while i < len(self.allIndices):
-            iCol = self.allIndices[i]
-            if iCol in self.categoricalIndices:
-                self._executeCategorical(iCol)
+            iCol = self.allIndices[i] + categoricalIndexModifier
+            if iCol >= self.dataset.columns.size:
+                break
+            currColName = self.dataset.columns.values[iCol]
+            if currColName in self.categoricalIndicesNames:
+                newModifCategorical = self._executeCategorical(iCol)
+                categoricalIndexModifier = categoricalIndexModifier + newModifCategorical
                 self._updateAllIndices()
+            
+            self._executeStep(1, currColName, iCol)
 
-            if iCol in self.ordinalIndices:
+            if currColName in self.ordinalIndicesNames:
                 self._executeOrdinal(iCol)
                 self._updateAllIndices()
+            
+            self._executeStep(2, currColName, iCol)
 
             if self.nanDataHandling != 'predict':
                 self._executeNaN(iCol)
                 self._updateAllIndices()
+                self._executeStep(3, currColName, iCol)
 
             i = i + 1
 
         if self.scaleDataType is not None and len(self.scaleDataType) > 0:
             self._executeScaler()
             self._updateAllIndices()
+        
+        self._executeStep(4)
 
         if self.nanDataHandling == 'predict':
             i = 0
@@ -1069,9 +1206,12 @@ class AutoPreprocessor():
                 iCol = self.allIndices[i]
                 self._executeNaN(iCol)
                 i = i + 1
+            self._executeStep(3)
 
         if self.featureSelectionMethod is not None:
             self._executeFeatureSelection()
+        
+        self._executeStep(5)
 
 
     def export(self, filePath, fileType='csv'):
