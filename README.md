@@ -2,16 +2,8 @@
 AutoAi is a high-level AI automation library that allows things like automatic training for a large amount of differents models and automatic data preprocessing. Support custom class implementation, making it work on any neural network you can imagine.
 
 ## Update: ##
-
-- Added support for custom neural network implementation with the [*ICustomWrapper*](https://github.com/FanaticPythoner/AutoAi#icustomwrapper-interface) interface
-- Added a dynamic Keras model in the AutoTrainer default class that changes dynamically according to the training data
-- Added a dynamic LSTM Keras model in the AutoTrainer default class that changes dynamically according to the training data
-- Added the [*AutoPreprocessor*](https://github.com/FanaticPythoner/AutoAi#autopreprocessor-class) Plot function
-- Added support for clearing unwanted models after training in the [*AIModel*](https://github.com/FanaticPythoner/AutoAi#aimodel-class) class
-- Added support for VIF (Variable Inflation Factors) Elimination feature selection
-- Added multiple examples
-- Added support for ignoring columns in scaling
-- Changed the [*AutoTrainer*](https://github.com/FanaticPythoner/AutoAi#autotrainer-class) list implementation for easier understanding
+- Added support in the [*AutoPreprocessor*](https://github.com/FanaticPythoner/AutoAi#autopreprocessor-class) for applying custom functions (or lambda) on specific columns at specific time using the *addApplyFunctionForColumn* method
+- Added example for the *addApplyFunctionForColumn* method in the [*AutoPreprocessor*](https://github.com/FanaticPythoner/AutoAi#autopreprocessor-class)
 
 ### Language: ### 
 
@@ -223,6 +215,52 @@ obj.execute()
 
 # Export the preprocessed dataset
 obj.export(filePath="Test_Dataset\\iris_preprocessed_predict_custom.csv", 
+           fileType='csv')
+
+# Print the preprocessed data
+print(obj.getFullDataset())
+```
+
+### Usage / Code sample (AutoPreprocessor with custom column lambdas): ###
+*This example apply a first lambda expression on the column 'sepal_length' after the categorical preprocessing, then a second lambda expression on the same column after all preprocessing steps occured*
+```python
+from autoAi.AutoPreprocessor import AutoPreprocessor
+
+# Create the AutoPreprocessor object
+obj = AutoPreprocessor(datasetPath='Test_Dataset\\iris.csv', 
+from autoAi.AutoPreprocessor import AutoPreprocessor
+
+# Creating the custom AutoTrainer class
+class CustomAutoTrainer():
+    def getModelsTypes(self):
+        import sklearn.ensemble
+        return [
+            sklearn.ensemble.VotingRegressor(estimators=[('lr', sklearn.linear_model.LinearRegression()),
+                                                         ('rf', sklearn.ensemble.RandomForestRegressor(n_estimators=50))])
+        ]
+
+# Create the AutoPreprocessor object
+obj = AutoPreprocessor(datasetPath='Test_Dataset\\iris.csv', 
+                       datasetType='csv', yDataNames=['species'])
+
+# Specify the dataset categorical names
+obj.updateCategoricalColumns(categoricalNames=['species'])
+
+# Specify the current data scale type
+obj.updateScaleData(scaleDataType=['minmax'])
+
+# Multiplying by 1000 each element in the column 'sepal_length' after doing the
+# categorical preprocessing (1)
+obj.addApplyFunctionForColumn('sepal_length', lambda x: x * 1000, step=1)
+
+# Dividing by 80 each element in the column 'sepal_length' after every preprocessing steps (5)
+obj.addApplyFunctionForColumn('sepal_length', lambda x: x / 80, step=5)
+
+# Execute the preprocessing with the current settings
+obj.execute()
+
+# Export the preprocessed dataset
+obj.export(filePath="Test_Dataset\\iris_preprocessed_lambdas.csv", 
            fileType='csv')
 
 # Print the preprocessed data
