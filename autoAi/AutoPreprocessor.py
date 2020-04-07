@@ -22,6 +22,7 @@ import hashlib
 from autoAi.AutoTrainer import AutoTrainer
 from autoAi.AIModel import AIModel
 
+import pickle
 
 class AutoPreprocessor():
     '''
@@ -1230,6 +1231,14 @@ class AutoPreprocessor():
 
         if fileType == 'csv':
             self.dataset.to_csv(filePath, index=False)
+
+        if len(self.scalers) > 0:
+            splittedFilePath = filePath.split(os.path.sep)
+            destPath = os.path.sep.join(splittedFilePath[:-1])
+            secondPartScalerName =  '_Dataset_' + '.'.join(splittedFilePath[-1].split('.')[:-1]) + '.pkl'
+            filePathScalers = os.path.join(destPath, "Scalers" + secondPartScalerName)
+            with open(filePathScalers, 'wb') as fs:
+                pickle.dump(self.scalers, fs)
 
 
     def plotDataset(self):
