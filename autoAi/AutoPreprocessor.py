@@ -60,6 +60,7 @@ class AutoPreprocessor():
         self.categoricalIndices = []
         self.scaleDataType = None
         self.scalers = None
+        self.colToAdd = []
 
         self.featureSelectionMethod = None
         self.featureSelectionMethodThreshold = None
@@ -1142,7 +1143,88 @@ class AutoPreprocessor():
 
                     modifier = modifier + 1
                     newColName = colName + '_Categorical_' + str(index + modifier)
-                    
+
+
+    def _verifyaddColumn(self, colName, values):
+        '''
+            Verify if a addColumnName call is valid
+        
+            RETURNS -> Void
+        '''
+        if type(colName) != str:
+            raise Exception('Invalid colName parameter: colName must be of type str')
+
+        if values is not None:
+            try:
+                len(values)
+            except Exception:
+                raise Exception("Invalid argument values : must be a list")
+            
+            if len(values) != self.dataset.values.shape[0]:
+                raise Exception("Invalid argument values : must be the same size as all the others columns")
+
+
+    def addColumn(self, colName, defaultValue=np.nan, values=None):
+        '''
+            Add an empty column to the current dataset for future manipulation
+            using the setColumnRowValue method
+
+            RETURNS -> Void
+        '''
+        self._verifyaddColumn(colName, values)
+        self.colToAdd.append((colName, defaultValue, values))
+
+
+    def _executeaddColumn(self):
+        '''
+            Add all the new columns
+
+            RETURNS -> Void
+        '''
+        for colName, defaultValue, values in self.colToAdd:
+            arrToAdd = values
+            if arrToAdd is None:
+                arrToAdd = np.array([defaultValue for x in range(self.dataset.values.shape[0])])
+                
+            self.dataset[colName] = pd.Series(arrToAdd, index=self.dataset.index)
+
+            self.xIndicesNames.append(colName)
+
+            self.xIndices = [self.dataset.columns.get_loc(val) for val in self.xIndicesNames]
+            self.categoricalIndicesNames = [val for val in self.categoricalIndicesNames if val in self.xIndicesNames or val in self.yIndicesNames]
+            self.categoricalIndices = [self.dataset.columns.get_loc(val) for val in self.categoricalIndicesNames]
+            self.ordinalIndicesNames = [val for val in self.ordinalIndicesNames if val in self.xIndicesNames or val in self.yIndicesNames]
+            self.ordinalIndices = [self.dataset.columns.get_loc(val) for val in self.ordinalIndicesNames]
+            self.ignoreColIndicesScalerNames = [val for val in self.ignoreColIndicesScalerNames if val in self.xIndicesNames or val in self.yIndicesNames]
+            self.ignoreColIndicesScaler = [self.dataset.columns.get_loc(val) for val in self.ignoreColIndicesScalerNames]
+
+
+    def _validateSetColumnRowValue(self, colName, rowIndex, value):
+        '''
+            Verify if a addColumnName call is valid
+        
+            RETURNS -> Void
+        '''        
+        if type(colName) != str:
+            raise Exception('Invalid colName parameter: colName must be of type str')
+
+        if type(rowIndex) != int and rowIndex not in self.allIndices:
+            raise Exception('Invalid colName parameter: colName must be of type str')
+
+
+    def setColumnRowValue(self, colName, rowIndex, value):
+        '''
+            Set a value in a given column and a given row
+            (For columns added with addColumn, call this function after the execute function, or in
+            a custom function using the addApplyFunctionForColumn function)
+            
+            RETURNS -> Void
+        '''
+        self._validateSetColumnRowValue(colName, rowIndex, value)
+        newDf = deepcopy(self.dataset)
+        newDf.iloc[rowIndex, [newDf.columns.get_loc(colName)]] = value
+        self.dataset = newDf
+
 
     def execute(self):
         '''
@@ -1158,6 +1240,7 @@ class AutoPreprocessor():
         self._validateScaleData()
 
         self._delIgnoreRow()
+        self._executeaddColumn()
 
         self.categoricalIndicesNames = [self.dataset.columns[x] for x in self.categoricalIndices]
         self.ordinalIndicesNames = [self.dataset.columns[x] for x in self.ordinalIndices]
@@ -1232,7 +1315,7 @@ class AutoPreprocessor():
         if fileType == 'csv':
             self.dataset.to_csv(filePath, index=False)
 
-        if len(self.scalers) > 0:
+        if self.scalers is not None and len(self.scalers) > 0:
             splittedFilePath = filePath.split(os.path.sep)
             destPath = os.path.sep.join(splittedFilePath[:-1])
             secondPartScalerName =  '_Dataset_' + '.'.join(splittedFilePath[-1].split('.')[:-1]) + '.pkl'
