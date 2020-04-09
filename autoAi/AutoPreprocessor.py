@@ -1154,6 +1154,9 @@ class AutoPreprocessor():
         if type(colName) != str:
             raise Exception('Invalid colName parameter: colName must be of type str')
 
+        if colName in self.dataset.columns:
+            raise Exception('Invalid colName parameter: this column name already exist')
+
         if values is not None:
             try:
                 len(values)
@@ -1168,6 +1171,12 @@ class AutoPreprocessor():
         '''
             Add an empty column to the current dataset for future manipulation
             using the setColumnRowValue method
+
+            Parameters:
+                1. colName      : Name of the column to add
+                2. defaultValue : default value to set for each row in the column
+                3. values       : if set (list), will use these values instead of the
+                                  defaultValue parameter
 
             RETURNS -> Void
         '''
@@ -1198,6 +1207,8 @@ class AutoPreprocessor():
             self.ignoreColIndicesScalerNames = [val for val in self.ignoreColIndicesScalerNames if val in self.xIndicesNames or val in self.yIndicesNames]
             self.ignoreColIndicesScaler = [self.dataset.columns.get_loc(val) for val in self.ignoreColIndicesScalerNames]
 
+        self.colToAdd = []
+
 
     def _validateSetColumnRowValue(self, colName, rowIndex, value):
         '''
@@ -1218,6 +1229,11 @@ class AutoPreprocessor():
             (For columns added with addColumn, call this function after the execute function, or in
             a custom function using the addApplyFunctionForColumn function)
             
+            Parameters:
+                1. colName  : Name of the column
+                2. rowIndex : Index of the row
+                3. value    : value to set
+
             RETURNS -> Void
         '''
         self._validateSetColumnRowValue(colName, rowIndex, value)
@@ -1248,6 +1264,8 @@ class AutoPreprocessor():
         self.yIndicesNames = [self.dataset.columns[x] for x in self.yIndices]
 
         self._executeStep(0)
+        if len(self.colToAdd) > 0:
+            self._executeaddColumn()
 
         i = 0
         iCol = 0
@@ -1263,17 +1281,23 @@ class AutoPreprocessor():
                 self._updateAllIndices()
             
             self._executeStep(1, currColName, iCol)
+            if len(self.colToAdd) > 0:
+                self._executeaddColumn()
 
             if currColName in self.ordinalIndicesNames:
                 self._executeOrdinal(iCol)
                 self._updateAllIndices()
             
             self._executeStep(2, currColName, iCol)
+            if len(self.colToAdd) > 0:
+                self._executeaddColumn()
 
             if self.nanDataHandling != 'predict':
-                self._executeNaN(iCol)
+                self._executeNaN(iCol)      
                 self._updateAllIndices()
                 self._executeStep(3, currColName, iCol)
+                if len(self.colToAdd) > 0:
+                    self._executeaddColumn()
 
             i = i + 1
 
@@ -1282,6 +1306,8 @@ class AutoPreprocessor():
             self._updateAllIndices()
         
         self._executeStep(4)
+        if len(self.colToAdd) > 0:
+            self._executeaddColumn()
 
         if self.nanDataHandling == 'predict':
             i = 0
@@ -1291,11 +1317,15 @@ class AutoPreprocessor():
                 self._executeNaN(iCol)
                 i = i + 1
             self._executeStep(3)
+            if len(self.colToAdd) > 0:
+                self._executeaddColumn()
 
         if self.featureSelectionMethod is not None:
             self._executeFeatureSelection()
         
         self._executeStep(5)
+        if len(self.colToAdd) > 0:
+            self._executeaddColumn()
 
 
     def export(self, filePath, fileType='csv'):
